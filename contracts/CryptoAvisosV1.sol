@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract CryptoAvisosV1 is Ownable{
     constructor(uint8 newFee){
-        fee = newFee;
+        setFee(newFee);
     }
 
     struct Product {
@@ -63,6 +63,7 @@ contract CryptoAvisosV1 is Ownable{
         Product memory product = productMapping[productId];
         require(product.forSell == true, 'Product already selled');
         uint256 finalPrice = product.price - (product.price * fee / 100);
+
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
             require(msg.value >= product.price, 'Not enough ETH sended');
