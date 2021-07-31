@@ -11,7 +11,7 @@ contract CryptoAvisosV1 is Ownable{
     }
 
     struct Product {
-        uint256 price;
+        uint256 price; //In WEI
         bool forSell; 
         address payable seller;
         address token;
@@ -30,6 +30,10 @@ contract CryptoAvisosV1 is Ownable{
         return fee;
     }
 
+    function viewETHBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+
     function submitProduct(uint256 productId, address payable seller, uint256 price, address token) public onlyOwner returns (bool) {
         //Submit or update a product
         Product memory product = Product(price, true, seller, token);
@@ -38,7 +42,8 @@ contract CryptoAvisosV1 is Ownable{
     }
 
     function setFee(uint8 newFee) public onlyOwner {
-        //Set fee. Ex: 10 = 10%
+        //Set fee. Example: 10 = 10%
+        require(newFee < 100, 'Fee bigger than 100%');
         fee = newFee;
     }
 
@@ -61,7 +66,7 @@ contract CryptoAvisosV1 is Ownable{
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
             require(msg.value >= product.price, 'Not enough ETH sended');
-            product.seller.transfer(product.price);
+            product.seller.transfer(finalPrice);
         }else{
             //Pay with token
             if (fee == 0){
