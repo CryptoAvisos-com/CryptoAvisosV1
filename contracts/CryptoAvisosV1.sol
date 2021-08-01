@@ -6,6 +6,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract CryptoAvisosV1 is Ownable{
+
+    mapping(uint256 => Product) public productMapping;
+    uint8 public fee;
+
+    event ProductSubmitted(uint256 productId);
+    event ProductPayed(uint256 productId);
+    event FeeSetted(uint8 previousFee, uint8 newFee);
+    event FeeClaimed(address receiver);
+
     constructor(uint8 newFee){
         setFee(newFee);
     }
@@ -14,11 +23,8 @@ contract CryptoAvisosV1 is Ownable{
         uint256 price; //In WEI
         bool forSell; 
         address payable seller;
-        address token;
+        address token; //Contract address or 0x00 if it's native coin
     }
-
-    mapping(uint256 => Product) public productMapping;
-    uint8 public fee;
 
     function viewProduct(uint256 productId) public view returns (Product memory) {
         //Return a product
@@ -38,13 +44,16 @@ contract CryptoAvisosV1 is Ownable{
         //Submit or update a product
         Product memory product = Product(price, true, seller, token);
         productMapping[productId] = product;
+        emit ProductSubmitted(productId);
         return true;
     }
 
     function setFee(uint8 newFee) public onlyOwner {
         //Set fee. Example: 10 = 10%
+        uint8 previousFee = fee;
         require(newFee < 100, 'Fee bigger than 100%');
         fee = newFee;
+        emit FeeSetted(previousFee, newFee);
     }
 
     function claimFee(address token) public payable onlyOwner {
@@ -56,6 +65,7 @@ contract CryptoAvisosV1 is Ownable{
             //ERC20
             IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
         }
+        emit FeeClaimed(msg.sender);
     }
 
     function payProduct(uint256 productId) external payable returns (bool) {
@@ -80,6 +90,7 @@ contract CryptoAvisosV1 is Ownable{
         }
         
         productMapping[productId].forSell = true;
+        emit ProductPayed(productId);
         return true;
     }
 }
