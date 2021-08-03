@@ -3,7 +3,16 @@
  */
 
 require("@nomiclabs/hardhat-waffle");
-const { mnemonic, url } = require('./secrets.json');
+require("@nomiclabs/hardhat-etherscan");
+const { mnemonic, url, apiKey } = require('./secrets.json');
+
+task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
+  const accounts = await hre.ethers.getSigners();
+
+  for (const account of accounts) {
+    console.log(account.address);
+  }
+});
 
 module.exports = {
   solidity: "0.8.0",
@@ -12,5 +21,8 @@ module.exports = {
       url: url,
       accounts: { mnemonic }
     }
+  },
+  etherscan: {
+    apiKey : apiKey
   }
 };
