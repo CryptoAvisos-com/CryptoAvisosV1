@@ -15,8 +15,6 @@ describe("CryptoAvisosV1", function () {
 
         // wait until the transaction is mined
         await setFeeTx.wait();
-        let viewFee = await this.cryptoAvisosV1.viewFee();
-        console.log('Fee ->', viewFee)
         expect(await this.cryptoAvisosV1.fee()).to.equal(15);
     });
 
@@ -36,7 +34,7 @@ describe("CryptoAvisosV1", function () {
         expect(receipt.status).to.equal(1);
 
         //View product
-        let viewProduct = await this.cryptoAvisosV1.viewProduct(256);
+        let productMapping = await this.cryptoAvisosV1.productMapping(256);
 
         //Approve DAI
         const approveTx = await dai.connect(this.accounts[2]).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits('10000',"ether"));
@@ -60,7 +58,7 @@ describe("CryptoAvisosV1", function () {
         expect(receipt.status).to.equal(1);
 
         //View product
-        let viewProduct = await this.cryptoAvisosV1.viewProduct(256);
+        let productMapping = await this.cryptoAvisosV1.productMapping(256);
 
         //Pay product
         const payProductTx = await this.cryptoAvisosV1.connect(this.accounts[2]).payProduct(256, { "value": ethers.utils.parseUnits('200',"ether") });
@@ -89,7 +87,7 @@ describe("CryptoAvisosV1", function () {
         expect(receipt.status).to.equal(1);
 
         //View product
-        let viewProduct = await this.cryptoAvisosV1.viewProduct(256);
+        let productMapping = await this.cryptoAvisosV1.productMapping(256);
 
         //Approve DAI
         const approveTx = await dai.connect(this.accounts[2]).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits('10000',"ether"));
@@ -117,7 +115,7 @@ describe("CryptoAvisosV1", function () {
         expect(receipt.status).to.equal(1);
 
         //View product
-        let viewProduct = await this.cryptoAvisosV1.viewProduct(256);
+        let productMapping = await this.cryptoAvisosV1.productMapping(256);
 
         //Pay product
         const payProductTx = await this.cryptoAvisosV1.connect(this.accounts[2]).payProduct(256, { "value": ethers.utils.parseUnits('200',"ether") });

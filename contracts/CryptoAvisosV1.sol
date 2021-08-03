@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-// import "hardhat/console.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -24,16 +23,6 @@ contract CryptoAvisosV1 is Ownable{
         bool forSell; 
         address payable seller;
         address token; //Contract address or 0x00 if it's native coin
-    }
-
-    function viewProduct(uint256 productId) public view returns (Product memory) {
-        //Return a product
-        return productMapping[productId];
-    }
-
-    function viewFee() public view returns (uint8) {
-        //Return fee
-        return fee;
     }
 
     function viewETHBalance() public view returns (uint256) {
