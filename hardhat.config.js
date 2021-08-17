@@ -4,6 +4,8 @@
 
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
+require("hardhat-gas-reporter");
+
 const { mnemonic, url, apiKey } = require('./secrets.json');
 
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {

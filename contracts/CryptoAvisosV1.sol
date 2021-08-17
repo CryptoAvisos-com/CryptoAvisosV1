@@ -11,6 +11,7 @@ contract CryptoAvisosV1 is Ownable{
 
     event ProductSubmitted(uint256 productId);
     event ProductPayed(uint256 productId);
+    event ProductReleased(uint256 productId);
     event FeeSetted(uint8 previousFee, uint8 newFee);
     event FeeClaimed(address receiver);
 
@@ -20,21 +21,15 @@ contract CryptoAvisosV1 is Ownable{
 
     struct Product {
         uint256 price; //In WEI
-        bool forSell; 
+        Status status; 
         address payable seller;
         address token; //Contract address or 0x00 if it's native coin
     }
 
-    function viewETHBalance() public view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function submitProduct(uint256 productId, address payable seller, uint256 price, address token) public onlyOwner returns (bool) {
-        //Submit or update a product
-        Product memory product = Product(price, true, seller, token);
-        productMapping[productId] = product;
-        emit ProductSubmitted(productId);
-        return true;
+    enum Status {
+        FORSELL,
+        WAITING,
+        SELLED
     }
 
     function setFee(uint8 newFee) public onlyOwner {
@@ -57,29 +52,47 @@ contract CryptoAvisosV1 is Ownable{
         emit FeeClaimed(msg.sender);
     }
 
-    function payProduct(uint256 productId) external payable returns (bool) {
+    function submitProduct(uint256 productId, address payable seller, uint256 price, address token) public onlyOwner {
+        //Submit or update a product
+        Product memory product = Product(price, Status.FORSELL, seller, token);
+        productMapping[productId] = product;
+        emit ProductSubmitted(productId);
+    }
+
+    function payProduct(uint256 productId) external payable {
         //Pay a specific product
         Product memory product = productMapping[productId];
-        require(product.forSell == true, 'Product already selled');
-        uint256 finalPrice = product.price - (product.price * fee / 100);
+        require(Status.FORSELL == product.status, 'Product already selled');
 
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
             require(msg.value >= product.price, 'Not enough ETH sended');
+        }else{
+            //Pay with token
+            IERC20(product.token).transferFrom(msg.sender, address(this), product.price);
+        }
+        
+        product.status = Status.WAITING;
+        productMapping[productId] = product;
+        emit ProductPayed(productId);
+    }
+
+    function releasePay(uint256 productId) external onlyOwner {
+        //Release pay to seller
+        Product memory product = productMapping[productId];
+        require(Status.WAITING == product.status, 'Not allowed to release pay');
+        uint256 finalPrice = product.price - (product.price * fee / 100);
+
+        if (product.token == address(0)) {
+            //Pay with ether (or native coin)
             product.seller.transfer(finalPrice);
         }else{
             //Pay with token
-            if (fee == 0){
-                //If fee is 0, transfer directly
-                IERC20(product.token).transferFrom(msg.sender, product.seller, product.price);
-            }else{
-                IERC20(product.token).transferFrom(msg.sender, address(this), product.price);
-                IERC20(product.token).transfer(product.seller, finalPrice);
-            }
+            IERC20(product.token).transfer(product.seller, finalPrice);
         }
-        
-        productMapping[productId].forSell = true;
-        emit ProductPayed(productId);
-        return true;
+
+        product.status = Status.SELLED;
+        productMapping[productId] = product;
+        emit ProductReleased(productId);
     }
 }
