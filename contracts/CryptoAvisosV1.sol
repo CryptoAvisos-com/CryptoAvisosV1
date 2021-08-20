@@ -54,6 +54,9 @@ contract CryptoAvisosV1 is Ownable{
 
     function submitProduct(uint256 productId, address payable seller, uint256 price, address token) public onlyOwner {
         //Submit or update a product
+        require(productId != 0, "productId cannot be zero");
+        require(price != 0, "price cannot be zero");
+        require(seller != address(0), "seller cannot be zero address");
         Product memory product = Product(price, Status.FORSELL, seller, token);
         productMapping[productId] = product;
         emit ProductSubmitted(productId);
