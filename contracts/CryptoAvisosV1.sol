@@ -34,8 +34,8 @@ contract CryptoAvisosV1 is Ownable{
 
     function setFee(uint8 newFee) public onlyOwner {
         //Set fee. Example: 10 = 10%
-        uint8 previousFee = fee;
         require(newFee < 100, 'Fee bigger than 100%');
+        uint8 previousFee = fee;
         fee = newFee;
         emit FeeSetted(previousFee, newFee);
     }
@@ -57,6 +57,7 @@ contract CryptoAvisosV1 is Ownable{
         require(productId != 0, "productId cannot be zero");
         require(price != 0, "price cannot be zero");
         require(seller != address(0), "seller cannot be zero address");
+        require(productMapping[productId].seller == address(0), "productId already exist");
         Product memory product = Product(price, Status.FORSELL, seller, token);
         productMapping[productId] = product;
         emit ProductSubmitted(productId);
