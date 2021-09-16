@@ -7,15 +7,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CryptoAvisosV1 is Ownable{
 
     mapping(uint256 => Product) public productMapping;
-    uint8 public fee;
+    uint256 public fee;
 
     event ProductSubmitted(uint256 productId);
     event ProductPayed(uint256 productId);
     event ProductReleased(uint256 productId);
-    event FeeSetted(uint8 previousFee, uint8 newFee);
+    event FeeSetted(uint256 previousFee, uint256 newFee);
     event FeeClaimed(address receiver);
 
-    constructor(uint8 newFee){
+    constructor(uint256 newFee){
         setFee(newFee);
     }
 
@@ -32,10 +32,10 @@ contract CryptoAvisosV1 is Ownable{
         SELLED
     }
 
-    function setFee(uint8 newFee) public onlyOwner {
-        //Set fee. Example: 10 = 10%
-        require(newFee < 100, 'Fee bigger than 100%');
-        uint8 previousFee = fee;
+    function setFee(uint256 newFee) public onlyOwner {
+        //Set fee. Example: 10 ether = 10%
+        require(newFee < 100 ether, 'Fee bigger than 100%');
+        uint256 previousFee = fee;
         fee = newFee;
         emit FeeSetted(previousFee, newFee);
     }
@@ -85,7 +85,7 @@ contract CryptoAvisosV1 is Ownable{
         //Release pay to seller
         Product memory product = productMapping[productId];
         require(Status.WAITING == product.status, 'Not allowed to release pay');
-        uint256 finalPrice = product.price - (product.price * fee / 100);
+        uint256 finalPrice = product.price - (product.price * fee / 100 ether);
 
         if (product.token == address(0)) {
             //Pay with ether (or native coin)

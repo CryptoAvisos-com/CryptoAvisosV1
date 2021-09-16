@@ -13,7 +13,7 @@ describe("CryptoAvisosV1", function () {
 
         //Deploy CAV1
         this.CryptoAvisosV1 = await ethers.getContractFactory("CryptoAvisosV1");
-        this.cryptoAvisosV1 = await this.CryptoAvisosV1.deploy(15);
+        this.cryptoAvisosV1 = await this.CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(fee)));
         await this.cryptoAvisosV1.deployed();
 
         //Deploy Example DAI
@@ -25,12 +25,12 @@ describe("CryptoAvisosV1", function () {
         await this.dai.transfer(this.accounts[2].address, ethers.utils.parseUnits('10000', "ether"));
     });
 
-    it(`Fee should be equal to ${fee}...`, async function () {
-        const setFeeTx = await this.cryptoAvisosV1.setFee(fee);
+    it(`Fee should be equal to...`, async function () {
+        const setFeeTx = await this.cryptoAvisosV1.setFee(ethers.utils.parseUnits(String(fee)));
 
         // wait until the transaction is mined
         await setFeeTx.wait();
-        expect(await this.cryptoAvisosV1.fee()).to.equal(fee);
+        expect(Number(ethers.utils.formatUnits(await this.cryptoAvisosV1.fee()))).to.equal(fee);
     });
 
     it("Should submit a product payable with DAI, succesfully...", async function () {
