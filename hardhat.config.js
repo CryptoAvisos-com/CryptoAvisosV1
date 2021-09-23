@@ -26,5 +26,8 @@ module.exports = {
   },
   etherscan: {
     apiKey : apiKey
+  },
+  gasReporter: {
+    excludeContracts:["DAI.sol", "ERC20.sol"]
   }
 };

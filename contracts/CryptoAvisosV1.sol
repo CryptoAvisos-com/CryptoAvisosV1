@@ -12,8 +12,9 @@ contract CryptoAvisosV1 is Ownable{
     event ProductSubmitted(uint256 productId);
     event ProductPayed(uint256 productId);
     event ProductReleased(uint256 productId);
+    event ProductMarkAsPayed(uint256 productId);
     event FeeSetted(uint256 previousFee, uint256 newFee);
-    event FeeClaimed(address receiver);
+    event FeeClaimed(address receiver, uint256 quantity);
 
     constructor(uint256 newFee){
         setFee(newFee);
@@ -40,16 +41,16 @@ contract CryptoAvisosV1 is Ownable{
         emit FeeSetted(previousFee, newFee);
     }
 
-    function claimFee(address token) public payable onlyOwner {
+    function claimFee(address token, uint256 quantity) public payable onlyOwner {
         //Claim fees originated of paying a product
         if(token == address(0)){
             //ETH
-            payable(msg.sender).transfer(address(this).balance);
+            payable(msg.sender).transfer(quantity);
         }else{
             //ERC20
-            IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
+            IERC20(token).transfer(msg.sender, quantity);
         }
-        emit FeeClaimed(msg.sender);
+        emit FeeClaimed(msg.sender, quantity);
     }
 
     function submitProduct(uint256 productId, address payable seller, uint256 price, address token) public onlyOwner {
@@ -61,6 +62,15 @@ contract CryptoAvisosV1 is Ownable{
         Product memory product = Product(price, Status.FORSELL, seller, token);
         productMapping[productId] = product;
         emit ProductSubmitted(productId);
+    }
+
+    function markAsPayed(uint256 productId) public onlyOwner {
+        //This function mark as payed a product when is payed in other chain
+        Product memory product = productMapping[productId];
+        require(Status.SELLED != product.status, 'Product already selled');
+        product.status = Status.SELLED;
+        productMapping[productId] = product;
+        emit ProductMarkAsPayed(productId);
     }
 
     function payProduct(uint256 productId) external payable {

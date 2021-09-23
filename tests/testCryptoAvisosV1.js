@@ -142,13 +142,13 @@ describe("CryptoAvisosV1", function () {
 
     it("Should claim fees in DAI, succesfully...", async function () {
         let daiBalanceOwnerBefore = ethers.utils.formatUnits(await this.dai.balanceOf(this.accounts[0].address));
-        let claimTx = await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(this.dai.address);
+        let claimTx = await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(this.dai.address, ethers.utils.parseUnits("1"));
         let daiBalanceOwnerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(this.accounts[0].address));
     });
 
     it("Should claim fees in ETH, succesfully...", async function () {
         let ethBalanceOwnerBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(this.accounts[0].address));
-        let claimTx = await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(ethers.constants.AddressZero);
+        let claimTx = await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(ethers.constants.AddressZero, ethers.utils.parseUnits("0.05"));
         let ethBalanceOwnerAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(this.accounts[0].address));
     });
 });
