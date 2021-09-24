@@ -1,33 +1,33 @@
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-gas-reporter");
 
-const { mnemonic, url, apiKey } = require('./secrets.json');
-
-task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners();
-
-  for (const account of accounts) {
-    console.log(account.address);
-  }
-});
+const { mnemonic, rinkeby, ethereum, bsc, polygon } = require('./secrets.json');
 
 module.exports = {
   solidity: "0.8.0",
   networks: {
     rinkeby: {
-      url: url,
+      url: rinkeby.rpc,
       accounts: { mnemonic }
-    }
+    },
+    ethereum: {
+      url: ethereum.rpc,
+      accounts: { mnemonic }
+    },
+    bsc: {
+      url: bsc.rpc,
+      accounts: { mnemonic }
+    },
+    polygon: {
+      url: polygon.rpc,
+      accounts: { mnemonic }
+    },
   },
   etherscan: {
-    apiKey : apiKey
+    apiKey:rinkeby.scanApiKey
   },
   gasReporter: {
-    excludeContracts:["DAI.sol", "ERC20.sol"]
+    excludeContracts: ["DAI.sol", "ERC20.sol"]
   }
 };
