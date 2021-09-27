@@ -12,6 +12,7 @@ contract CryptoAvisosV1 is Ownable{
     event ProductSubmitted(uint256 productId);
     event ProductPayed(uint256 productId);
     event ProductReleased(uint256 productId);
+    event ProductUpdated(uint256 productId);
     event ProductMarkAsPayed(uint256 productId);
     event FeeSetted(uint256 previousFee, uint256 newFee);
     event FeeClaimed(address receiver, uint256 quantity);
@@ -41,7 +42,7 @@ contract CryptoAvisosV1 is Ownable{
         emit FeeSetted(previousFee, newFee);
     }
 
-    function claimFee(address token, uint256 quantity) public payable onlyOwner {
+    function claimFee(address token, uint256 quantity) external payable onlyOwner {
         //Claim fees originated of paying a product
         if(token == address(0)){
             //ETH
@@ -53,8 +54,8 @@ contract CryptoAvisosV1 is Ownable{
         emit FeeClaimed(msg.sender, quantity);
     }
 
-    function submitProduct(uint256 productId, address payable seller, uint256 price, address token) public onlyOwner {
-        //Submit or update a product
+    function submitProduct(uint256 productId, address payable seller, uint256 price, address token) external onlyOwner {
+        //Submit a product
         require(productId != 0, "productId cannot be zero");
         require(price != 0, "price cannot be zero");
         require(seller != address(0), "seller cannot be zero address");
@@ -64,7 +65,7 @@ contract CryptoAvisosV1 is Ownable{
         emit ProductSubmitted(productId);
     }
 
-    function markAsPayed(uint256 productId) public onlyOwner {
+    function markAsPayed(uint256 productId) external onlyOwner {
         //This function mark as payed a product when is payed in other chain
         Product memory product = productMapping[productId];
         require(Status.SELLED != product.status, 'Product already selled');
@@ -108,5 +109,18 @@ contract CryptoAvisosV1 is Ownable{
         product.status = Status.SELLED;
         productMapping[productId] = product;
         emit ProductReleased(productId);
+    }
+
+    function updateProduct(uint256 productId, address payable seller, uint256 price, address token) external onlyOwner {
+        //Update a product
+        require(productId != 0, "productId cannot be zero");
+        require(price != 0, "price cannot be zero");
+        require(seller != address(0), "seller cannot be zero address");
+        Product memory product = productMapping[productId];
+        require(product.status == Status.FORSELL, "cannot updated a selled or waiting product");
+        require(product.seller != address(0), "cannot update a non existing product");
+        product = Product(price, Status.FORSELL, seller, token);
+        productMapping[productId] = product;
+        emit ProductUpdated(productId);
     }
 }
