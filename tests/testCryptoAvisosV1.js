@@ -36,7 +36,7 @@ describe("CryptoAvisosV1", function () {
     it("Should submit a product payable with DAI, succesfully...", async function () {
         //Submit product
         let productId = productIdDai;
-        let productPrice = '200';
+        let productPrice = '180';
         let productSeller = this.accounts[1].address;
         let productToken = this.dai.address;
         let daiDecimals = await this.dai.decimals();
@@ -59,6 +59,24 @@ describe("CryptoAvisosV1", function () {
         let productToken = ethers.constants.AddressZero;
         const submitProductTx = await this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice), productToken);
         let receipt = await submitProductTx.wait();
+        expect(receipt.status).to.equal(1);
+
+        //View product
+        let productMapping = await this.cryptoAvisosV1.productMapping(productId);
+        expect(Number(ethers.utils.formatUnits(productMapping.price))).equal(Number(productPrice));
+        expect(productMapping.seller).equal(productSeller);
+        expect(productMapping.token).equal(productToken);
+    });
+
+    it("Should update a product, successfully...", async function(){
+        //Update product
+        let productId = productIdDai;
+        let productPrice = '200';
+        let productSeller = this.accounts[1].address;
+        let productToken = this.dai.address;
+        let daiDecimals = await this.dai.decimals();
+        const updateProductTx = await this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken);
+        let receipt = await updateProductTx.wait();
         expect(receipt.status).to.equal(1);
 
         //View product

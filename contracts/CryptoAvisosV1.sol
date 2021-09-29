@@ -35,8 +35,8 @@ contract CryptoAvisosV1 is Ownable{
     }
 
     function setFee(uint256 newFee) public onlyOwner {
-        //Set fee. Example: 10 ether = 10%
-        require(newFee < 100 ether, 'Fee bigger than 100%');
+        //Set fee. Example: 10e18 = 10%
+        require(newFee < 100e18, 'Fee bigger than 100%');
         uint256 previousFee = fee;
         fee = newFee;
         emit FeeSetted(previousFee, newFee);
@@ -96,7 +96,7 @@ contract CryptoAvisosV1 is Ownable{
         //Release pay to seller
         Product memory product = productMapping[productId];
         require(Status.WAITING == product.status, 'Not allowed to release pay');
-        uint256 finalPrice = product.price - (product.price * fee / 100 ether);
+        uint256 finalPrice = product.price - (product.price * fee / 100e18);
 
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
