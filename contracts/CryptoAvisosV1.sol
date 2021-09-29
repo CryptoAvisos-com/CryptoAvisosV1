@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract CryptoAvisosV1 is Ownable{
+contract CryptoAvisosV1 is Ownable {
 
     mapping(uint256 => Product) public productMapping;
     uint256 public fee;
@@ -31,7 +31,7 @@ contract CryptoAvisosV1 is Ownable{
     enum Status {
         FORSELL,
         WAITING,
-        SELLED
+        SOLD
     }
 
     function setFee(uint256 newFee) public onlyOwner {
@@ -68,8 +68,8 @@ contract CryptoAvisosV1 is Ownable{
     function markAsPayed(uint256 productId) external onlyOwner {
         //This function mark as payed a product when is payed in other chain
         Product memory product = productMapping[productId];
-        require(Status.SELLED != product.status, 'Product already selled');
-        product.status = Status.SELLED;
+        require(Status.SOLD != product.status, 'Product already sold');
+        product.status = Status.SOLD;
         productMapping[productId] = product;
         emit ProductMarkAsPayed(productId);
     }
@@ -77,7 +77,7 @@ contract CryptoAvisosV1 is Ownable{
     function payProduct(uint256 productId) external payable {
         //Pay a specific product
         Product memory product = productMapping[productId];
-        require(Status.FORSELL == product.status, 'Product already selled');
+        require(Status.FORSELL == product.status, 'Product already sold');
 
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
@@ -106,7 +106,7 @@ contract CryptoAvisosV1 is Ownable{
             IERC20(product.token).transfer(product.seller, finalPrice);
         }
 
-        product.status = Status.SELLED;
+        product.status = Status.SOLD;
         productMapping[productId] = product;
         emit ProductReleased(productId);
     }
@@ -117,7 +117,7 @@ contract CryptoAvisosV1 is Ownable{
         require(price != 0, "price cannot be zero");
         require(seller != address(0), "seller cannot be zero address");
         Product memory product = productMapping[productId];
-        require(product.status == Status.FORSELL, "cannot updated a selled or waiting product");
+        require(product.status == Status.FORSELL || product.status == Status.WAITING, "cannot update a sold product");
         require(product.seller != address(0), "cannot update a non existing product");
         product = Product(price, Status.FORSELL, seller, token);
         productMapping[productId] = product;
