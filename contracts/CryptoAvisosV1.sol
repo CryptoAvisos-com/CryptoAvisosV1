@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CryptoAvisosV1 is Ownable {
 
     mapping(uint256 => Product) public productMapping;
+    uint256[] private productsIds;
     uint256 public fee;
 
     event ProductSubmitted(uint256 productId);
@@ -32,6 +33,10 @@ contract CryptoAvisosV1 is Ownable {
         FORSELL,
         WAITING,
         SOLD
+    }
+
+    function getProductsIds() external view returns (uint256[] memory) {
+        return productsIds;
     }
 
     function setFee(uint256 newFee) public onlyOwner {
@@ -62,6 +67,7 @@ contract CryptoAvisosV1 is Ownable {
         require(productMapping[productId].seller == address(0), "productId already exist");
         Product memory product = Product(price, Status.FORSELL, seller, token);
         productMapping[productId] = product;
+        productsIds.push(productId);
         emit ProductSubmitted(productId);
     }
 
@@ -123,4 +129,5 @@ contract CryptoAvisosV1 is Ownable {
         productMapping[productId] = product;
         emit ProductUpdated(productId);
     }
+    
 }

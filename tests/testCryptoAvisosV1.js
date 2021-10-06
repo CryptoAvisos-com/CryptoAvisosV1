@@ -26,10 +26,7 @@ describe("CryptoAvisosV1", function () {
     });
 
     it(`Fee should be equal to...`, async function () {
-        const setFeeTx = await this.cryptoAvisosV1.setFee(ethers.utils.parseUnits(String(fee)));
-
-        // wait until the transaction is mined
-        await setFeeTx.wait();
+        await this.cryptoAvisosV1.setFee(ethers.utils.parseUnits(String(fee)));
         expect(Number(ethers.utils.formatUnits(await this.cryptoAvisosV1.fee()))).to.equal(fee);
     });
 
@@ -41,9 +38,7 @@ describe("CryptoAvisosV1", function () {
         let productToken = this.dai.address;
         let daiDecimals = await this.dai.decimals();
         const submitProductTx = await this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken);
-        let receipt = await submitProductTx.wait();
-        expect(receipt.status).to.equal(1);
-
+        
         //View product
         let productMapping = await this.cryptoAvisosV1.productMapping(productId);
         expect(Number(ethers.utils.formatUnits(productMapping.price))).equal(Number(productPrice));
@@ -58,8 +53,6 @@ describe("CryptoAvisosV1", function () {
         let productSeller = this.accounts[1].address;
         let productToken = ethers.constants.AddressZero;
         const submitProductTx = await this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice), productToken);
-        let receipt = await submitProductTx.wait();
-        expect(receipt.status).to.equal(1);
 
         //View product
         let productMapping = await this.cryptoAvisosV1.productMapping(productId);
@@ -68,7 +61,7 @@ describe("CryptoAvisosV1", function () {
         expect(productMapping.token).equal(productToken);
     });
 
-    it("Should update a product, successfully...", async function(){
+    it("Should update a product, successfully...", async function () {
         //Update product
         let productId = productIdDai;
         let productPrice = '200';
@@ -76,8 +69,6 @@ describe("CryptoAvisosV1", function () {
         let productToken = this.dai.address;
         let daiDecimals = await this.dai.decimals();
         const updateProductTx = await this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken);
-        let receipt = await updateProductTx.wait();
-        expect(receipt.status).to.equal(1);
 
         //View product
         let productMapping = await this.cryptoAvisosV1.productMapping(productId);
@@ -97,8 +88,6 @@ describe("CryptoAvisosV1", function () {
 
         //Pay product
         const payProductTx = await this.cryptoAvisosV1.connect(this.accounts[2]).payProduct(productIdDai);
-        let receiptPay = await payProductTx.wait();
-        expect(receiptPay.status).to.equal(1);
 
         //DAI amount after
         let daiBalanceBuyerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(this.accounts[2].address));
@@ -118,9 +107,6 @@ describe("CryptoAvisosV1", function () {
 
         //Pay product
         const payProductTx = await this.cryptoAvisosV1.connect(this.accounts[2]).payProduct(productIdEth, { value: String(product.price) });
-        let receiptPay = await payProductTx.wait();
-        expect(receiptPay.status).to.equal(1);
-        let txCost = receiptPay.gasUsed * payProductTx.gasPrice;
 
         //ETH amount after
         let ethBalanceBuyerAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(this.accounts[2].address));
@@ -130,7 +116,7 @@ describe("CryptoAvisosV1", function () {
         expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) + Number(ethers.utils.formatUnits(product.price)));
     });
 
-    it("Should release DAI from product pay...", async function() {
+    it("Should release DAI from product pay...", async function () {
         let daiBalanceSellerBefore = ethers.utils.formatUnits(await this.dai.balanceOf(this.accounts[1].address));
         let daiBalanceContractBefore = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
 
@@ -144,7 +130,7 @@ describe("CryptoAvisosV1", function () {
         expect(Number(daiBalanceContractAfter)).equal(Number(daiBalanceContractBefore) - Number(ethers.utils.formatUnits(product.price)) + (fee * Number(ethers.utils.formatUnits(product.price)) / 100));
     });
 
-    it("Should release ETH from product pay...", async function() {
+    it("Should release ETH from product pay...", async function () {
         let ethBalanceSellerBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(this.accounts[1].address));
         let ethBalanceContractBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
 
@@ -159,14 +145,23 @@ describe("CryptoAvisosV1", function () {
     });
 
     it("Should claim fees in DAI, succesfully...", async function () {
+        let balanceToClaim = "1";
         let daiBalanceOwnerBefore = ethers.utils.formatUnits(await this.dai.balanceOf(this.accounts[0].address));
-        let claimTx = await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(this.dai.address, ethers.utils.parseUnits("1"));
+        await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(this.dai.address, ethers.utils.parseUnits(balanceToClaim));
         let daiBalanceOwnerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(this.accounts[0].address));
+        expect(Number(daiBalanceOwnerAfter)).closeTo(Number(daiBalanceOwnerBefore) + Number(balanceToClaim), 0.01);
     });
 
     it("Should claim fees in ETH, succesfully...", async function () {
+        let balanceToClaim = "0.05";
         let ethBalanceOwnerBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(this.accounts[0].address));
-        let claimTx = await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(ethers.constants.AddressZero, ethers.utils.parseUnits("0.05"));
+        await this.cryptoAvisosV1.connect(this.accounts[0]).claimFee(ethers.constants.AddressZero, ethers.utils.parseUnits(balanceToClaim));
         let ethBalanceOwnerAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(this.accounts[0].address));
+        expect(Number(ethBalanceOwnerAfter)).closeTo(Number(ethBalanceOwnerBefore) + Number(balanceToClaim), 0.01);
+    });
+
+    it("Should getProductsIds, successfully...", async function () {
+        let productsIds = await this.cryptoAvisosV1.getProductsIds();
+        expect(productsIds.length).greaterThan(0);
     });
 });
