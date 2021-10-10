@@ -11,12 +11,12 @@ contract CryptoAvisosV1 is Ownable {
     uint256 public fee;
 
     event ProductSubmitted(uint256 productId);
-    event ProductPayed(uint256 productId);
+    event ProductPaid(uint256 productId);
     event ProductReleased(uint256 productId);
     event ProductUpdated(uint256 productId);
-    event ProductMarkAsPayed(uint256 productId);
+    event ProductMarkAsPaid(uint256 productId);
     event FeeSetted(uint256 previousFee, uint256 newFee);
-    event FeeClaimed(address receiver, uint256 quantity);
+    event FeeClaimed(address receiver, address token, uint256 quantity);
 
     constructor(uint256 newFee){
         setFee(newFee);
@@ -26,6 +26,7 @@ contract CryptoAvisosV1 is Ownable {
         uint256 price; //In WEI
         Status status; 
         address payable seller;
+        address payable buyer;
         address token; //Contract address or 0x00 if it's native coin
     }
 
@@ -41,7 +42,7 @@ contract CryptoAvisosV1 is Ownable {
 
     function setFee(uint256 newFee) public onlyOwner {
         //Set fee. Example: 10e18 = 10%
-        require(newFee < 100e18, 'Fee bigger than 100%');
+        require(newFee <= 100e18, 'Fee bigger than 100%');
         uint256 previousFee = fee;
         fee = newFee;
         emit FeeSetted(previousFee, newFee);
@@ -56,7 +57,7 @@ contract CryptoAvisosV1 is Ownable {
             //ERC20
             IERC20(token).transfer(msg.sender, quantity);
         }
-        emit FeeClaimed(msg.sender, quantity);
+        emit FeeClaimed(msg.sender, token, quantity);
     }
 
     function submitProduct(uint256 productId, address payable seller, uint256 price, address token) external onlyOwner {
@@ -65,19 +66,19 @@ contract CryptoAvisosV1 is Ownable {
         require(price != 0, "price cannot be zero");
         require(seller != address(0), "seller cannot be zero address");
         require(productMapping[productId].seller == address(0), "productId already exist");
-        Product memory product = Product(price, Status.FORSELL, seller, token);
+        Product memory product = Product(price, Status.FORSELL, seller, payable(address(0)), token);
         productMapping[productId] = product;
         productsIds.push(productId);
         emit ProductSubmitted(productId);
     }
 
-    function markAsPayed(uint256 productId) external onlyOwner {
-        //This function mark as payed a product when is payed in other chain
+    function markAsPaid(uint256 productId) external onlyOwner {
+        //This function mark as paid a product when is paid in other chain
         Product memory product = productMapping[productId];
         require(Status.SOLD != product.status, 'Product already sold');
         product.status = Status.SOLD;
         productMapping[productId] = product;
-        emit ProductMarkAsPayed(productId);
+        emit ProductMarkAsPaid(productId);
     }
 
     function payProduct(uint256 productId) external payable {
@@ -94,8 +95,9 @@ contract CryptoAvisosV1 is Ownable {
         }
         
         product.status = Status.WAITING;
+        product.buyer = payable(msg.sender);
         productMapping[productId] = product;
-        emit ProductPayed(productId);
+        emit ProductPaid(productId);
     }
 
     function releasePay(uint256 productId) external onlyOwner {
@@ -125,7 +127,7 @@ contract CryptoAvisosV1 is Ownable {
         Product memory product = productMapping[productId];
         require(product.status == Status.FORSELL || product.status == Status.WAITING, "cannot update a sold product");
         require(product.seller != address(0), "cannot update a non existing product");
-        product = Product(price, Status.FORSELL, seller, token);
+        product = Product(price, Status.FORSELL, seller, payable(address(0)), token);
         productMapping[productId] = product;
         emit ProductUpdated(productId);
     }

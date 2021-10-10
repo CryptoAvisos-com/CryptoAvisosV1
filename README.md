@@ -23,7 +23,7 @@ OnlyOwner functions:
 - setFee: used by admins to set the fee of the purchases.
 - claimFee: used by admins to claim collected fees, or to rescue funds by wrong purchase.
 - submitProduct: creates a new product in the contract. Product id should be unique.
-- markAsPayed: mark a product as payed. Used to mark as payed a product payed in other chain.
+- markAsPaid: mark a product as paid. Used to mark as paid a product paid in other chain.
 - releasePay: release the pay to the seller, if all conditions are OK.
 - updateProduct: updates a product. Product id to update should exist, and not be in "SOLD" status.
 
