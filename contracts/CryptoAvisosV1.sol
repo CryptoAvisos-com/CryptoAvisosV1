@@ -9,6 +9,8 @@ contract CryptoAvisosV1 is Ownable {
     mapping(uint256 => Product) public productMapping;
     uint256[] private productsIds;
     uint256 public fee;
+    uint256 public lastUnlockTimeFee;
+    uint256 public lastFeeToSet;
 
     event ProductSubmitted(uint256 productId);
     event ProductPaid(uint256 productId);
@@ -17,9 +19,10 @@ contract CryptoAvisosV1 is Ownable {
     event ProductMarkAsPaid(uint256 productId);
     event FeeSetted(uint256 previousFee, uint256 newFee);
     event FeeClaimed(address receiver, address token, uint256 quantity);
+    event PreparedFee();
 
     constructor(uint256 newFee){
-        setFee(newFee);
+        _setFee(newFee);
     }
 
     struct Product {
@@ -40,12 +43,26 @@ contract CryptoAvisosV1 is Ownable {
         return productsIds;
     }
 
-    function setFee(uint256 newFee) public onlyOwner {
+    function _setFee(uint256 newFee) internal {
         //Set fee. Example: 10e18 = 10%
         require(newFee <= 100e18, 'Fee bigger than 100%');
         uint256 previousFee = fee;
         fee = newFee;
         emit FeeSetted(previousFee, newFee);
+    }
+
+    function prepareFee(uint256 newFee) external onlyOwner {
+        //Prepare to set fee (wait 7 days to set. Timelock kind of)
+        lastUnlockTimeFee = block.timestamp + 7 days;
+        lastFeeToSet = newFee;
+    }
+
+    function implementFee() external onlyOwner {
+        //Set fee after 7 days
+        require(lastUnlockTimeFee > 0, "not prepared");
+        require(lastUnlockTimeFee <= block.timestamp, "not unlocked yet");
+        _setFee(lastFeeToSet);
+        lastUnlockTimeFee = 0;
     }
 
     function claimFee(address token, uint256 quantity) external payable onlyOwner {

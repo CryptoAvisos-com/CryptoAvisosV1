@@ -26,7 +26,11 @@ describe("CryptoAvisosV1", function () {
     });
 
     it(`Fee should be equal to...`, async function () {
-        await this.cryptoAvisosV1.setFee(ethers.utils.parseUnits(String(fee)));
+        await expect(this.cryptoAvisosV1.implementFee()).to.be.revertedWith('not prepared');
+        await this.cryptoAvisosV1.prepareFee(ethers.utils.parseUnits(String(fee)));
+        await expect(this.cryptoAvisosV1.implementFee()).to.be.revertedWith('not unlocked yet');
+        await network.provider.send("evm_increaseTime", [604800]); //1 week
+        await this.cryptoAvisosV1.implementFee();
         expect(Number(ethers.utils.formatUnits(await this.cryptoAvisosV1.fee()))).to.equal(fee);
     });
 
