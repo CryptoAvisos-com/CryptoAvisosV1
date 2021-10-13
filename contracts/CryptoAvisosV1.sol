@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CryptoAvisosV1 is Ownable {
 
     mapping(uint256 => Product) public productMapping;
+    mapping(address => uint256) public claimableFee;
     uint256[] private productsIds;
     uint256 public fee;
     uint256 public lastUnlockTimeFee;
@@ -16,10 +17,11 @@ contract CryptoAvisosV1 is Ownable {
     event ProductPaid(uint256 productId);
     event ProductReleased(uint256 productId);
     event ProductUpdated(uint256 productId);
+    event ProductRefunded(uint256 productId);
     event ProductMarkAsPaid(uint256 productId);
     event FeeSetted(uint256 previousFee, uint256 newFee);
-    event FeeClaimed(address receiver, address token, uint256 quantity);
-    event PreparedFee();
+    event FeesClaimed(address receiver, address token, uint256 quantity);
+    event PreparedFee(uint fee, uint unlockTime);
 
     constructor(uint256 newFee){
         _setFee(newFee);
@@ -31,6 +33,7 @@ contract CryptoAvisosV1 is Ownable {
         address payable seller;
         address payable buyer;
         address token; //Contract address or 0x00 if it's native coin
+        uint256 feeCharged; //Holds charged fee, in case admin need to refund and fee has change between pay and refund time
     }
 
     enum Status {
@@ -55,6 +58,7 @@ contract CryptoAvisosV1 is Ownable {
         //Prepare to set fee (wait 7 days to set. Timelock kind of)
         lastUnlockTimeFee = block.timestamp + 7 days;
         lastFeeToSet = newFee;
+        emit PreparedFee(newFee, lastUnlockTimeFee);
     }
 
     function implementFee() external onlyOwner {
@@ -65,8 +69,10 @@ contract CryptoAvisosV1 is Ownable {
         lastUnlockTimeFee = 0;
     }
 
-    function claimFee(address token, uint256 quantity) external payable onlyOwner {
+    function claimFees(address token, uint256 quantity) external payable onlyOwner {
         //Claim fees originated of paying a product
+        require(claimableFee[token] >= quantity, "not enough funds");
+        claimableFee[token] -= quantity;
         if(token == address(0)){
             //ETH
             payable(msg.sender).transfer(quantity);
@@ -74,7 +80,7 @@ contract CryptoAvisosV1 is Ownable {
             //ERC20
             IERC20(token).transfer(msg.sender, quantity);
         }
-        emit FeeClaimed(msg.sender, token, quantity);
+        emit FeesClaimed(msg.sender, token, quantity);
     }
 
     function submitProduct(uint256 productId, address payable seller, uint256 price, address token) external onlyOwner {
@@ -83,7 +89,7 @@ contract CryptoAvisosV1 is Ownable {
         require(price != 0, "price cannot be zero");
         require(seller != address(0), "seller cannot be zero address");
         require(productMapping[productId].seller == address(0), "productId already exist");
-        Product memory product = Product(price, Status.FORSELL, seller, payable(address(0)), token);
+        Product memory product = Product(price, Status.FORSELL, seller, payable(address(0)), token, 0);
         productMapping[productId] = product;
         productsIds.push(productId);
         emit ProductSubmitted(productId);
@@ -110,7 +116,11 @@ contract CryptoAvisosV1 is Ownable {
             //Pay with token
             IERC20(product.token).transferFrom(msg.sender, address(this), product.price);
         }
-        
+
+        uint256 toFee = product.price * fee / 100e18;
+        claimableFee[product.token] += toFee;
+
+        product.feeCharged = toFee;
         product.status = Status.WAITING;
         product.buyer = payable(msg.sender);
         productMapping[productId] = product;
@@ -121,7 +131,7 @@ contract CryptoAvisosV1 is Ownable {
         //Release pay to seller
         Product memory product = productMapping[productId];
         require(Status.WAITING == product.status, 'Not allowed to release pay');
-        uint256 finalPrice = product.price - (product.price * fee / 100e18);
+        uint256 finalPrice = product.price - product.feeCharged;
 
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
@@ -144,9 +154,27 @@ contract CryptoAvisosV1 is Ownable {
         Product memory product = productMapping[productId];
         require(product.status == Status.FORSELL || product.status == Status.WAITING, "cannot update a sold product");
         require(product.seller != address(0), "cannot update a non existing product");
-        product = Product(price, Status.FORSELL, seller, payable(address(0)), token);
+        product = Product(price, Status.FORSELL, seller, payable(address(0)), token, 0);
         productMapping[productId] = product;
         emit ProductUpdated(productId);
+    }
+
+    function refundProduct(uint256 productId) external onlyOwner {
+        //Return funds to buyer
+        require(productId != 0, "productId cannot be zero");
+        Product memory product = productMapping[productId];
+        require(product.status == Status.WAITING, "cannot refund a non waiting product");
+        if(product.token == address(0)){
+            //ETH
+            payable(product.buyer).transfer(product.price);
+        }else{
+            //ERC20
+            IERC20(product.token).transfer(product.buyer, product.price);
+        }
+        claimableFee[product.token] -= product.feeCharged;
+        product.status = Status.SOLD;
+        productMapping[productId] = product;
+        emit ProductRefunded(productId);
     }
     
 }

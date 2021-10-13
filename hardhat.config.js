@@ -5,7 +5,15 @@ require("hardhat-gas-reporter");
 const { mnemonic, rinkeby, ethereum, bsc, polygon } = require('./secrets.json');
 
 module.exports = {
-  solidity: "0.8.0",
+  solidity: {
+    version: "0.8.0",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
   networks: {
     rinkeby: {
       url: rinkeby.rpc,
