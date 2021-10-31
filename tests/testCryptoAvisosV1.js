@@ -9,7 +9,7 @@ describe("CryptoAvisosV1", function () {
 
         //Deploy CAV1
         this.CryptoAvisosV1 = await ethers.getContractFactory("CryptoAvisosV1");
-        this.cryptoAvisosV1 = await this.CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(fee)));
+        this.cryptoAvisosV1 = await this.CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(1)));
         await this.cryptoAvisosV1.deployed();
 
         //Deploy Example DAI
@@ -37,6 +37,9 @@ describe("CryptoAvisosV1", function () {
         let productSeller = seller.address;
         let productToken = this.dai.address;
         let daiDecimals = await this.dai.decimals();
+        await expect(this.cryptoAvisosV1.submitProduct(0, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken)).to.be.revertedWith("productId cannot be zero");
+        await expect(this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits("0", daiDecimals), productToken)).to.be.revertedWith("price cannot be zero");
+        await expect(this.cryptoAvisosV1.submitProduct(productId, ethers.constants.AddressZero, ethers.utils.parseUnits(productPrice, daiDecimals), productToken)).to.be.revertedWith("seller cannot be zero address");
         await this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken);
 
         //View product
@@ -72,6 +75,10 @@ describe("CryptoAvisosV1", function () {
         let productSeller = seller.address;
         let productToken = this.dai.address;
         let daiDecimals = await this.dai.decimals();
+        await expect(this.cryptoAvisosV1.updateProduct(0, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken)).to.be.revertedWith("productId cannot be zero");
+        await expect(this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits("0", daiDecimals), productToken)).to.be.revertedWith("price cannot be zero");
+        await expect(this.cryptoAvisosV1.updateProduct(productId, ethers.constants.AddressZero, ethers.utils.parseUnits(productPrice, daiDecimals), productToken)).to.be.revertedWith("seller cannot be zero address");
+        await expect(this.cryptoAvisosV1.updateProduct(8000, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken)).to.be.revertedWith("cannot update a non existing product");
         await this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken);
 
         //View product
@@ -82,6 +89,8 @@ describe("CryptoAvisosV1", function () {
     });
 
     it("Should pay a product with DAI, succesfully...", async function () {
+        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(5656)).to.be.revertedWith("cannot pay a non existing product");
+
         //Approve DAI
         let daiDecimals = await this.dai.decimals();
         await this.dai.connect(buyer).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits("10000", daiDecimals));
@@ -92,6 +101,7 @@ describe("CryptoAvisosV1", function () {
 
         //Pay product
         await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0]);
+        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0])).to.be.revertedWith("Product already sold");
 
         //DAI amount after
         let daiBalanceBuyerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
@@ -110,22 +120,27 @@ describe("CryptoAvisosV1", function () {
         let product = await this.cryptoAvisosV1.productMapping(productArray[1]);
 
         //Pay product
+        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[1], { value: "0" })).to.be.revertedWith("Not enough ETH sended");
         await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[1], { value: String(product.price) });
 
         //ETH amount after
         let ethBalanceBuyerAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(buyer.address));
         let ethBalanceContractAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
 
-        expect(Number(ethBalanceBuyerAfter)).closeTo(Number(ethBalanceBuyerBefore) - Number(ethers.utils.formatUnits(product.price)), 0.001);
+        expect(Number(ethBalanceBuyerAfter)).closeTo(Number(ethBalanceBuyerBefore) - Number(ethers.utils.formatUnits(product.price)), 0.01);
         expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) + Number(ethers.utils.formatUnits(product.price)));
     });
 
     it("Should release DAI from product pay...", async function () {
+        await expect(this.cryptoAvisosV1.releasePay(8989)).to.be.revertedWith("cannot release pay for a non existing product");
+
         let daiBalanceSellerBefore = ethers.utils.formatUnits(await this.dai.balanceOf(seller.address));
         let daiBalanceContractBefore = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
 
+        
         let product = await this.cryptoAvisosV1.productMapping(productArray[0]);
         await this.cryptoAvisosV1.releasePay(productArray[0]);
+        await expect(this.cryptoAvisosV1.releasePay(productArray[0])).to.be.revertedWith("Not allowed to release pay");
 
         let daiBalanceSellerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(seller.address));
         let daiBalanceContractAfter = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
@@ -159,6 +174,10 @@ describe("CryptoAvisosV1", function () {
         let balanceDaiBefore = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
         await this.cryptoAvisosV1.connect(buyer).payProduct(productId);
         let balanceDaiFeesBefore = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(this.dai.address));
+
+        await expect(this.cryptoAvisosV1.refundProduct(0)).to.be.revertedWith("productId cannot be zero");
+        await expect(this.cryptoAvisosV1.refundProduct(2562)).to.be.revertedWith("cannot refund a non existing product");
+        await expect(this.cryptoAvisosV1.refundProduct(productArray[1])).to.be.revertedWith("cannot refund a non waiting product");
         await this.cryptoAvisosV1.refundProduct(productId);
         let balanceDaiAfter = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
         let balanceDaiFeesAfter = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(this.dai.address));
@@ -209,6 +228,7 @@ describe("CryptoAvisosV1", function () {
     });
 
     it("Should mark a product as paid...", async function () {
+        await expect(this.cryptoAvisosV1.connect(deployer).markAsPaid(4589)).to.be.revertedWith("cannot mark as paid a non existing product");
         await expect(this.cryptoAvisosV1.connect(deployer).markAsPaid(productArray[0])).to.be.revertedWith("Product already sold");
 
         let productId = productArray[4];
@@ -218,6 +238,8 @@ describe("CryptoAvisosV1", function () {
         await this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice), productToken);
 
         await this.cryptoAvisosV1.connect(deployer).markAsPaid(productArray[4]);
+        let product = await this.cryptoAvisosV1.productMapping(productArray[4]);
+        expect(product.status).equal(2);
     });
 
     it("Should getProductsIds, successfully...", async function () {

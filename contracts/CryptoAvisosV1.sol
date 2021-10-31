@@ -98,6 +98,7 @@ contract CryptoAvisosV1 is Ownable {
     function markAsPaid(uint256 productId) external onlyOwner {
         //This function mark as paid a product when is paid in other chain
         Product memory product = productMapping[productId];
+        require(product.seller != address(0), "cannot mark as paid a non existing product");
         require(Status.SOLD != product.status, 'Product already sold');
         product.status = Status.SOLD;
         productMapping[productId] = product;
@@ -107,6 +108,7 @@ contract CryptoAvisosV1 is Ownable {
     function payProduct(uint256 productId) external payable {
         //Pay a specific product
         Product memory product = productMapping[productId];
+        require(product.seller != address(0), "cannot pay a non existing product");
         require(Status.FORSELL == product.status, 'Product already sold');
 
         if (product.token == address(0)) {
@@ -130,6 +132,7 @@ contract CryptoAvisosV1 is Ownable {
     function releasePay(uint256 productId) external onlyOwner {
         //Release pay to seller
         Product memory product = productMapping[productId];
+        require(product.seller != address(0), "cannot release pay for a non existing product");
         require(Status.WAITING == product.status, 'Not allowed to release pay');
         uint256 finalPrice = product.price - product.feeCharged;
 
@@ -163,6 +166,7 @@ contract CryptoAvisosV1 is Ownable {
         //Return funds to buyer
         require(productId != 0, "productId cannot be zero");
         Product memory product = productMapping[productId];
+        require(product.seller != address(0), "cannot refund a non existing product");
         require(product.status == Status.WAITING, "cannot refund a non waiting product");
         if(product.token == address(0)){
             //ETH
