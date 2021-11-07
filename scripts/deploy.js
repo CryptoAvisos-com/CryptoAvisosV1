@@ -10,7 +10,7 @@ async function main() {
     await hre.run("compile");
 
     //Deploy CAV1
-    let initialFee = 1;
+    let initialFee = 0;
     const CryptoAvisosV1 = await hre.ethers.getContractFactory("CryptoAvisosV1");
     const cryptoAvisosV1 = await CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(initialFee)));
 
@@ -45,10 +45,10 @@ async function main() {
     }
 
     //Verify
-    await hre.run("verify:verify", {
-        address: cryptoAvisosV1.address,
-        constructorArguments: [ethers.utils.parseUnits(String(initialFee))],
-    });
+    // await hre.run("verify:verify", {
+    //     address: cryptoAvisosV1.address,
+    //     constructorArguments: [ethers.utils.parseUnits(String(initialFee))],
+    // });
 
 }
 
