@@ -2,7 +2,7 @@ const { expect } = require("chai");
 
 describe("CryptoAvisosV1", function () {
     let productArray = [256, 266, 276, 286, 296];
-    let fee = 15;
+    let fee = 0;
 
     before(async function () {
         [deployer, seller, buyer] = await ethers.getSigners();
@@ -183,7 +183,7 @@ describe("CryptoAvisosV1", function () {
         let balanceDaiFeesAfter = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(this.dai.address));
 
         expect(Number(balanceDaiAfter)).equal(Number(balanceDaiBefore));
-        expect(Number(balanceDaiFeesBefore)).greaterThan(Number(balanceDaiFeesAfter));
+        expect(Number(balanceDaiFeesBefore)).greaterThanOrEqual(Number(balanceDaiFeesAfter));
     });
 
     it("Should refund a product in ETH...", async function () {
@@ -202,7 +202,7 @@ describe("CryptoAvisosV1", function () {
         let balanceEthFeesAfter = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(ethers.constants.AddressZero));
 
         expect(Number(balanceEthAfter)).closeTo(Number(balanceEthBefore), 0.001);
-        expect(Number(balanceEthFeesBefore)).greaterThan(Number(balanceEthFeesAfter));
+        expect(Number(balanceEthFeesBefore)).greaterThanOrEqual(Number(balanceEthFeesAfter));
     });
 
     it("Should claim fees in DAI, succesfully...", async function () {
