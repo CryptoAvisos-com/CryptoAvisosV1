@@ -40,3 +40,13 @@ Product struct:
 - buyer: Product buyer, 0x00 address if not bought yet.
 - token: Contract address of ERC20 to pay the product.(0x00 if it's native coin, example: ETH, BNB, MATIC).
 - feeCharged: Fee charged for buying a product. Used for refund.
+
+## **Registry**
+
+|       **Title**        |                         **Address**                          |
+| :--------------------: | :----------------------------------------------------------: |
+|      BSC Multisig      | [0xf0Bfc9f97BAe489411b22Aa69dBCA1170d51182A](https://bscscan.com/address/0xf0Bfc9f97BAe489411b22Aa69dBCA1170d51182A) |
+|    Polygon Multisig    | [0x62D20398Be41397c9Af7eB745471003031c26DF6](https://polygonscan.com/address/0x62D20398Be41397c9Af7eB745471003031c26DF6) |
+|   CryptoAvisosV1 BSC   | [0xd77DBc54a318a86Aa93954B23Ca2F57BA1E3c0a9](https://bscscan.com/address/0xd77dbc54a318a86aa93954b23ca2f57ba1e3c0a9) |
+| CryptoAvisosV1 Polygon | [0xd77DBc54a318a86Aa93954B23Ca2F57BA1E3c0a9](https://polygonscan.com/address/0xd77dbc54a318a86aa93954b23ca2f57ba1e3c0a9) |
+

@@ -2,7 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-gas-reporter");
 
-const { mnemonic, rinkeby, ethereum, bsc, polygon } = require('./secrets.json');
+const { mnemonic, rinkeby, ethereum, bsc, polygon, privateKey } = require('./secrets.json');
 
 module.exports = {
   solidity: {
@@ -17,23 +17,23 @@ module.exports = {
   networks: {
     rinkeby: {
       url: rinkeby.rpc,
-      accounts: { mnemonic }
+      accounts: [privateKey]
     },
     ethereum: {
       url: ethereum.rpc,
-      accounts: { mnemonic }
+      accounts: [privateKey]
     },
     bsc: {
       url: bsc.rpc,
-      accounts: { mnemonic }
+      accounts: [privateKey]
     },
     polygon: {
       url: polygon.rpc,
-      accounts: { mnemonic }
+      accounts: [privateKey]
     },
   },
   etherscan: {
-    apiKey:bsc.scanApiKey
+    apiKey: polygon.scanApiKey
   },
   gasReporter: {
     excludeContracts: ["DAI.sol", "ERC20.sol"]
