@@ -1,5 +1,11 @@
 {
-    "CryptoAvisosEthereumMultiSig":"",
-    "CryptoAvisosBSCMultiSig":"0xf0Bfc9f97BAe489411b22Aa69dBCA1170d51182A",
-    "CryptoAvisosPolygonMultiSig":"0x62D20398Be41397c9Af7eB745471003031c26DF6"
+    "CryptoAvisosEthereumMultiSig": "",
+    "CryptoAvisosBSCMultiSig": "0xf0Bfc9f97BAe489411b22Aa69dBCA1170d51182A",
+    "CryptoAvisosPolygonMultiSig": "0x62D20398Be41397c9Af7eB745471003031c26DF6",
+    "CryptoAvisosV1BSC":"",
+    "CryptoAvisosV1Polygon":"",
+    "safeMasterCopyAddressBSC": "",
+    "safeMasterCopyAddressPolygon": "",
+    "safeProxyFactoryAddressBSC": "",
+    "safeProxyFactoryAddressPolygon": ""
 }

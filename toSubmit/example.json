@@ -1,0 +1,18 @@
+{
+    "globalList": [
+        {
+            "sellerAddress": "",
+            "productList": [
+                {
+                    "tokenAddress": "",
+                    "list": [
+                        {
+                            "productId": "",
+                            "priceInHuman": ""
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

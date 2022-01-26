@@ -3,3 +3,5 @@ artifacts
 cache
 index.html
 secrets.json
+toSubmit/*
+!example.json
