@@ -2,30 +2,43 @@ let { EthersAdapter } = require('@gnosis.pm/safe-core-sdk');
 let Safe = require('@gnosis.pm/safe-core-sdk').default;
 let SafeServiceClient = require('@gnosis.pm/safe-service-client').default;
 let { ContractNetworksConfig } = require('@gnosis.pm/safe-core-sdk');
-let safeService = new SafeServiceClient("https://safe.fantom.network");
 let registry = require("../registry.json");
 
 task("batchSubmit", "Submit products in batch")
     .addParam("filename", "Name of the JSON file")
     .setAction(async (taskArgs) => {
-        let jsonFile = require(`../toSubmit/${taskArgs.filename}`);
 
-        [this.deployer] = await ethers.getSigners();
+        let filename = taskArgs.filename;
+        if (!filename.includes(".json")) {
+            filename += ".json";
+        }
+        let jsonFile = require(`../toSubmit/${filename}`);
+
+        [, this.gnosisSafeOwner] = await ethers.getSigners();
 
         this.ethAdapterDeployer = new EthersAdapter({
             ethers,
-            signer: this.deployer
+            signer: this.gnosisSafeOwner
         });
 
         const id = await this.ethAdapterDeployer.getChainId();
 
         switch (id) {
+            case 4:
+                //Rinkeby
+                this.multiSendAddress = registry.CryptoAvisosRinkebyMultiSig;
+                this.safeMasterCopyAddress = registry.safeMasterCopyAddressRinkeby;
+                this.safeProxyFactoryAddress = registry.safeProxyFactoryAddressRinkeby;
+                this.CryptoAvisosV1Addr = registry.CryptoAvisosV1Rinkeby;
+                this.txServiceUrl = registry.txServiceUrlRinkeby;
+                break;
             case 56:
                 //BSC
                 this.multiSendAddress = registry.CryptoAvisosBSCMultiSig;
                 this.safeMasterCopyAddress = registry.safeMasterCopyAddressBSC;
                 this.safeProxyFactoryAddress = registry.safeProxyFactoryAddressBSC;
                 this.CryptoAvisosV1Addr = registry.CryptoAvisosV1BSC;
+                this.txServiceUrl = registry.txServiceUrlBSC;
                 break;
             case 137:
                 //Polygon
@@ -33,8 +46,11 @@ task("batchSubmit", "Submit products in batch")
                 this.safeMasterCopyAddress = registry.safeMasterCopyAddressPolygon;
                 this.safeProxyFactoryAddress = registry.safeProxyFactoryAddressPolygon;
                 this.CryptoAvisosV1Addr = registry.CryptoAvisosV1Polygon;
+                this.txServiceUrl = registry.txServiceUrlPolygon;
                 break;
         }
+
+        let safeService = new SafeServiceClient(this.txServiceUrl);
 
         const ContractNetworksConfig = {
             [id]: {
@@ -71,7 +87,7 @@ task("batchSubmit", "Submit products in batch")
         //Instance ERC20
         this.ERC20 = new ethers.Contract(ethers.constants.AddressZero, [
             'function decimals() external view returns (uint8)',
-        ], this.deployer);
+        ], this.gnosisSafeOwner);
 
         //Loop all products
         for (let i = 0; i < jsonFile.globalList.length; i++) {
@@ -81,37 +97,38 @@ task("batchSubmit", "Submit products in batch")
                 const subItem = item.productList[e];
                 const sellerAddr = item.sellerAddress;
                 const tokenAddr = subItem.tokenAddress;
-                const decimals = 18; //Number(await this.ERC20.attach(tokenAddr).decimals());
+                const decimals = Number(await this.ERC20.attach(tokenAddr).decimals());
 
                 for (let x = 0; x < subItem.list.length; x++) {
                     const product = subItem.list[x];
                     const price = product.priceInHuman;
-                    
-                    // addToBatch(await this.cryptoAvisosV1.attach(this.CryptoAvisosV1Addr).populateTransaction.submitProduct(
-                    //     product.productId,
-                    //     sellerAddr,
-                    //     ethers.utils.parseUnits(String(price), decimals),
-                    //     tokenAddr
-                    // ));
+
+                    addToBatch(this.batchTxs, await this.CryptoAvisosV1.attach(this.CryptoAvisosV1Addr).populateTransaction.submitProduct(
+                        product.productId,
+                        sellerAddr,
+                        ethers.utils.parseUnits(String(price), decimals),
+                        tokenAddr
+                    ));
 
                     console.log(product.productId, sellerAddr, tokenAddr, decimals, price);
                 }
             }
         }
 
-        // this.safeTransaction = await safeSdk.createTransaction(this.batchTxs);
-        // await safeSdk.signTransaction(this.safeTransaction);
-        // this.safeTxHash = await safeSdk.getTransactionHash(this.safeTransaction);
+        this.safeTransaction = await this.safeSdk.createTransaction(this.batchTxs);
+        await this.safeSdk.signTransaction(this.safeTransaction);
+        this.safeTxHash = await this.safeSdk.getTransactionHash(this.safeTransaction);
 
-        // let safeTransaction = this.safeTransaction;
-        // let safeTxHash = this.safeTxHash;
-        // let deployer = this.deployer.address;
-        // await safeService.proposeTransaction({
-        //     safeAddress: this.multiSendAddress,
-        //     safeTransaction: safeTransaction,
-        //     safeTxHash: safeTxHash,
-        //     senderAddress: deployer
-        // });
+        let safeTransaction = this.safeTransaction;
+        let safeTxHash = this.safeTxHash;
+        let deployer = this.gnosisSafeOwner.address;
+
+        await safeService.proposeTransaction({
+            safeAddress: this.multiSendAddress,
+            safeTransaction: safeTransaction,
+            safeTxHash: safeTxHash,
+            senderAddress: deployer
+        });
 
     });
 

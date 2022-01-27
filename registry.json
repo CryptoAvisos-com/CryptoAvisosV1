@@ -2,10 +2,17 @@
     "CryptoAvisosEthereumMultiSig": "",
     "CryptoAvisosBSCMultiSig": "0xf0Bfc9f97BAe489411b22Aa69dBCA1170d51182A",
     "CryptoAvisosPolygonMultiSig": "0x62D20398Be41397c9Af7eB745471003031c26DF6",
-    "CryptoAvisosV1BSC":"",
-    "CryptoAvisosV1Polygon":"",
+    "CryptoAvisosRinkebyMultiSig": "0x43f160979d18f4F91e8952becc126cCb40079F1a",
+    "CryptoAvisosV1BSC": "",
+    "CryptoAvisosV1Polygon": "",
+    "CryptoAvisosV1Rinkeby": "0xd77DBc54a318a86Aa93954B23Ca2F57BA1E3c0a9",
     "safeMasterCopyAddressBSC": "",
     "safeMasterCopyAddressPolygon": "",
+    "safeMasterCopyAddressRinkeby": "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552",
     "safeProxyFactoryAddressBSC": "",
-    "safeProxyFactoryAddressPolygon": ""
+    "safeProxyFactoryAddressPolygon": "",
+    "safeProxyFactoryAddressRinkeby": "0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2",
+    "txServiceUrlBSC":"",
+    "txServiceUrlPolygon":"",
+    "txServiceUrlRinkeby":"https://safe-transaction.rinkeby.gnosis.io/"
 }
