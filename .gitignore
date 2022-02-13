@@ -5,3 +5,6 @@ index.html
 secrets.json
 toSubmit/*
 !example.json
+build
+reports
+__pycache__

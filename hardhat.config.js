@@ -34,7 +34,7 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: polygon.scanApiKey
+    apiKey: rinkeby.scanApiKey
   },
   gasReporter: {
     excludeContracts: ["DAI.sol", "ERC20.sol"]
