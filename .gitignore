@@ -8,3 +8,4 @@ toSubmit/*
 build
 reports
 __pycache__
+.vscode
