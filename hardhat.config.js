@@ -1,9 +1,8 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-gas-reporter");
-require("./tasks/submitProducts.js");
 
-const { rinkeby, ethereum, bsc, polygon, privateKeyDeployer, privateKeyGnosis } = require('./secrets.json');
+const { rinkeby, ethereum, bsc, polygon, privateKeyDeployer } = require('./secrets.json');
 
 module.exports = {
   solidity: {
@@ -18,23 +17,28 @@ module.exports = {
   networks: {
     rinkeby: {
       url: rinkeby.rpc,
-      accounts: [privateKeyDeployer, privateKeyGnosis]
+      accounts: [privateKeyDeployer]
     },
     ethereum: {
       url: ethereum.rpc,
-      accounts: [privateKeyDeployer, privateKeyGnosis]
+      accounts: [privateKeyDeployer]
     },
     bsc: {
       url: bsc.rpc,
-      accounts: [privateKeyDeployer, privateKeyGnosis]
+      accounts: [privateKeyDeployer]
     },
     polygon: {
       url: polygon.rpc,
-      accounts: [privateKeyDeployer, privateKeyGnosis]
-    },
+      accounts: [privateKeyDeployer]
+    }
   },
   etherscan: {
-    apiKey: rinkeby.scanApiKey
+    apiKey: {
+      mainnet: ethereum.scanApiKey,
+      rinkeby: rinkeby.scanApiKey,
+      bsc: bsc.scanApiKey,
+      polygon: polygon.scanApiKey
+    }
   },
   gasReporter: {
     excludeContracts: ["DAI.sol", "ERC20.sol"]
