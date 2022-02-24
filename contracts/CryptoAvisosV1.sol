@@ -151,6 +151,7 @@ contract CryptoAvisosV1 is Ownable {
     function releasePay(uint ticketId) external onlyOwner {
         //Release pay to seller
         Ticket memory ticket = productTicketsMapping[ticketId];
+        require(ticket.buyer != address(0), "!exist");
 
         Product memory product = productMapping[ticket.productId];
         require(Status.WAITING == ticket.status, "!waiting");
@@ -185,9 +186,9 @@ contract CryptoAvisosV1 is Ownable {
         //Return funds to buyer
         Ticket memory ticket = productTicketsMapping[ticketId];
 
-        require(ticket.productId != 0, "!productId");
-        Product memory product = productMapping[ticket.productId];
-        require(product.seller != address(0), "!exist");
+        require(ticket.productId != 0, "!ticketId");
+        require(Status.WAITING == ticket.status, "!waiting");
+
         if(ticket.tokenPaid == address(0)){
             //ETH
             ticket.buyer.transfer(ticket.pricePaid);
@@ -222,6 +223,28 @@ contract CryptoAvisosV1 is Ownable {
         product.stock -= stockToRemove;
         productMapping[productId] = product;
         emit StockRemoved(productId, stockToRemove);
+    }
+
+    function getTicketsIdsByProduct(uint productId) external view returns (uint[] memory) {
+        // Count how many of them are
+        uint count = 0;
+        for (uint256 i = 0; i < ticketsIds.length; i++) {
+            if (productTicketsMapping[ticketsIds[i]].productId == productId) {
+                count++;
+            }
+        }
+
+        // Add to array
+        uint index = 0;
+        uint[] memory _ticketsIds = new uint[](count);
+        for (uint256 i = 0; i < ticketsIds.length; i++) {
+            if (productTicketsMapping[ticketsIds[i]].productId == productId) {
+                _ticketsIds[index] = ticketsIds[i];
+                index++;
+            }
+        }
+
+        return _ticketsIds;
     }
     
 }
