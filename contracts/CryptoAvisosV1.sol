@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/// @title A smart contract to buy and sell products on CryptoAvisos.com
+/// @author TheAustrian
 contract CryptoAvisosV1 is Ownable {
 
     mapping(uint => Product) public productMapping; //productId in CA platform => Product
@@ -53,12 +55,41 @@ contract CryptoAvisosV1 is Ownable {
         SOLD
     }
 
+    /// @notice Get all productIds loaded in the contract
+    /// @return an array of productIds
     function getProductsIds() external view returns (uint[] memory) {
         return productsIds;
     }
 
+    /// @notice Get all ticketsIds loaded in the contract
+    /// @return an array of ticketsIds
     function getTicketsIds() external view returns (uint[] memory) {
         return ticketsIds;
+    }
+
+    /// @notice Get all ticketsIds filtered by `productId`
+    /// @param productId new fee to prepare
+    /// @return an array of ticketsIds
+    function getTicketsIdsByProduct(uint productId) external view returns (uint[] memory) {
+        // Count how many of them are
+        uint count = 0;
+        for (uint256 i = 0; i < ticketsIds.length; i++) {
+            if (productTicketsMapping[ticketsIds[i]].productId == productId) {
+                count++;
+            }
+        }
+
+        // Add to array
+        uint index = 0;
+        uint[] memory _ticketsIds = new uint[](count);
+        for (uint256 i = 0; i < ticketsIds.length; i++) {
+            if (productTicketsMapping[ticketsIds[i]].productId == productId) {
+                _ticketsIds[index] = ticketsIds[i];
+                index++;
+            }
+        }
+
+        return _ticketsIds;
     }
 
     function _setFee(uint newFee) internal {
@@ -69,25 +100,31 @@ contract CryptoAvisosV1 is Ownable {
         emit FeeSetted(previousFee, newFee);
     }
 
+    /// @notice Used for admin as first step to set fee (1/2)
+    /// @dev Prepare to set fee (wait 7 days to set. Timelock kind of)
+    /// @param newFee new fee to prepare
     function prepareFee(uint newFee) external onlyOwner {
-        //Prepare to set fee (wait 7 days to set. Timelock kind of)
         lastUnlockTimeFee = block.timestamp + 7 days;
         lastFeeToSet = newFee;
         emit PreparedFee(newFee, lastUnlockTimeFee);
     }
 
+    /// @notice Used for admin as second step to set fee (2/2)
+    /// @dev Set fee after 7 days
     function implementFee() external onlyOwner {
-        //Set fee after 7 days
         require(lastUnlockTimeFee > 0, "!prepared");
         require(lastUnlockTimeFee <= block.timestamp, "!unlocked");
         _setFee(lastFeeToSet);
         lastUnlockTimeFee = 0;
     }
 
+    /// @notice Used for admin to claim fees originated from sales
+    /// @param token address of token to claim
+    /// @param quantity quantity to claim
     function claimFees(address token, uint quantity) external payable onlyOwner {
-        //Claim fees originated of paying a product
         require(claimableFee[token] >= quantity, "!funds");
         claimableFee[token] -= quantity;
+
         if(token == address(0)){
             //ETH
             payable(msg.sender).transfer(quantity);
@@ -98,8 +135,14 @@ contract CryptoAvisosV1 is Ownable {
         emit FeesClaimed(msg.sender, token, quantity);
     }
 
+    /// @notice Submit a product
+    /// @dev Create a new product, revert if already exists
+    /// @param productId ID of the product in CA DB
+    /// @param seller seller address of the product
+    /// @param price price (with corresponding ERC20 decimals)
+    /// @param token address of the token
+    /// @param stock how much units of the product
     function submitProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyOwner {
-        //Submit a product
         require(productId != 0, "!productId");
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
@@ -111,8 +154,11 @@ contract CryptoAvisosV1 is Ownable {
         emit ProductSubmitted(productId);
     }
 
+    /// @notice This function enable or disable a product
+    /// @dev Modifies value of `enabled` in Product Struct
+    /// @param productId ID of the product in CA DB
+    /// @param isEnabled value to set
     function switchEnable(uint productId, bool isEnabled) external onlyOwner {
-        //This function enable or disable a product
         Product memory product = productMapping[productId];
         require(product.seller != address(0), "!exist");
         product.enabled = isEnabled;
@@ -120,8 +166,10 @@ contract CryptoAvisosV1 is Ownable {
         emit SwitchChanged(productId, isEnabled);
     }
 
+    /// @notice Public function to pay a product
+    /// @dev It generates a ticket, can be pay with ETH or ERC20
+    /// @param productId ID of the product in CA DB
     function payProduct(uint productId) external payable {
-        //Pay a specific product
         Product memory product = productMapping[productId];
         require(product.seller != address(0), "!exist");
         require(product.enabled, "!enabled");
@@ -148,8 +196,9 @@ contract CryptoAvisosV1 is Ownable {
         emit ProductPaid(productId, ticketId);
     }
 
+    /// @notice Release pay (sends money, without fee, to the seller)
+    /// @param ticketId TicketId (returned on `payProduct`)
     function releasePay(uint ticketId) external onlyOwner {
-        //Release pay to seller
         Ticket memory ticket = productTicketsMapping[ticketId];
         require(ticket.buyer != address(0), "!exist");
 
@@ -170,6 +219,13 @@ contract CryptoAvisosV1 is Ownable {
         emit PayReleased(ticket.productId, ticketId);
     }
 
+    /// @notice Used by admin to update values of a product
+    /// @dev `productId` needs to be loaded in contract
+    /// @param productId ID of the product in CA DB
+    /// @param seller seller address of the product
+    /// @param price price (with corresponding ERC20 decimals)
+    /// @param token address of the token
+    /// @param stock how much units of the product
     function updateProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyOwner {
         //Update a product
         require(productId != 0, "!productId");
@@ -182,8 +238,9 @@ contract CryptoAvisosV1 is Ownable {
         emit ProductUpdated(productId);
     }
 
+    /// @notice Refunds pay (sends money, without fee, to the buyer)
+    /// @param ticketId TicketId (returned on `payProduct`)
     function refundProduct(uint ticketId) external onlyOwner {
-        //Return funds to buyer
         Ticket memory ticket = productTicketsMapping[ticketId];
 
         require(ticket.productId != 0, "!ticketId");
@@ -203,6 +260,9 @@ contract CryptoAvisosV1 is Ownable {
         emit ProductRefunded(ticket.productId, ticketId);
     }
 
+    /// @notice Add units to stock in a specific product
+    /// @param productId ID of the product in CA DB
+    /// @param stockToAdd How many units add to stock
     function addStock(uint productId, uint stockToAdd) external onlyOwner {
         //Add stock to a product
         Product memory product = productMapping[productId];
@@ -214,6 +274,9 @@ contract CryptoAvisosV1 is Ownable {
         emit StockAdded(productId, stockToAdd);
     }
 
+    /// @notice Remove units to stock in a specific product
+    /// @param productId ID of the product in CA DB
+    /// @param stockToRemove How many units remove from stock
     function removeStock(uint productId, uint stockToRemove) external onlyOwner {
         //Add stock to a product
         Product memory product = productMapping[productId];
@@ -223,28 +286,6 @@ contract CryptoAvisosV1 is Ownable {
         product.stock -= stockToRemove;
         productMapping[productId] = product;
         emit StockRemoved(productId, stockToRemove);
-    }
-
-    function getTicketsIdsByProduct(uint productId) external view returns (uint[] memory) {
-        // Count how many of them are
-        uint count = 0;
-        for (uint256 i = 0; i < ticketsIds.length; i++) {
-            if (productTicketsMapping[ticketsIds[i]].productId == productId) {
-                count++;
-            }
-        }
-
-        // Add to array
-        uint index = 0;
-        uint[] memory _ticketsIds = new uint[](count);
-        for (uint256 i = 0; i < ticketsIds.length; i++) {
-            if (productTicketsMapping[ticketsIds[i]].productId == productId) {
-                _ticketsIds[index] = ticketsIds[i];
-                index++;
-            }
-        }
-
-        return _ticketsIds;
     }
     
 }
