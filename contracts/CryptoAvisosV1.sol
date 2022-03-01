@@ -46,8 +46,8 @@ contract CryptoAvisosV1 is Ownable {
         Status status;
         address payable buyer;
         address tokenPaid; //Holds contract address or 0x00 if it"s native coin used in payment
-        uint feeCharged; //Holds charged fee, in case admin need to refund and fee has change between pay and refund time
-        uint pricePaid; //Holds price paid at momento of payment (without fee)
+        uint feeCharged; //Holds charged fee, in case admin need to refund and fee has changed between pay and refund time
+        uint pricePaid; //Holds price paid at moment of payment (without fee)
     }
 
     enum Status {
@@ -68,7 +68,7 @@ contract CryptoAvisosV1 is Ownable {
     }
 
     /// @notice Get all ticketsIds filtered by `productId`
-    /// @param productId new fee to prepare
+    /// @param productId ID of the product in CA DB
     /// @return an array of ticketsIds
     function getTicketsIdsByProduct(uint productId) external view returns (uint[] memory) {
         // Count how many of them are
@@ -84,6 +84,31 @@ contract CryptoAvisosV1 is Ownable {
         uint[] memory _ticketsIds = new uint[](count);
         for (uint256 i = 0; i < ticketsIds.length; i++) {
             if (productTicketsMapping[ticketsIds[i]].productId == productId) {
+                _ticketsIds[index] = ticketsIds[i];
+                index++;
+            }
+        }
+
+        return _ticketsIds;
+    }
+
+    /// @notice Get all ticketsIds filtered by `buyer`
+    /// @param user address of user to filter
+    /// @return an array of ticketsIds
+    function getTicketsIdsByAddress(address user) external view returns (uint[] memory) {
+        // Count how many of them are
+        uint count = 0;
+        for (uint256 i = 0; i < ticketsIds.length; i++) {
+            if (productTicketsMapping[ticketsIds[i]].buyer == user) {
+                count++;
+            }
+        }
+
+        // Add to array
+        uint index = 0;
+        uint[] memory _ticketsIds = new uint[](count);
+        for (uint256 i = 0; i < ticketsIds.length; i++) {
+            if (productTicketsMapping[ticketsIds[i]].buyer == user) {
                 _ticketsIds[index] = ticketsIds[i];
                 index++;
             }

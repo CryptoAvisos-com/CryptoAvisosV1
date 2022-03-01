@@ -317,4 +317,14 @@ describe("CryptoAvisosV1", function () {
         expect(ticketsIds.length).greaterThan(0);
     });
 
+    it("Should getTicketsIdsByProduct, successfully...", async function () {
+        let ticketsIds = await this.cryptoAvisosV1.getTicketsIdsByProduct(productArray[0]);
+        expect(ticketsIds.length).greaterThan(0);
+    });
+
+    it("Should getTicketsIdsByAddress, successfully...", async function () {
+        let ticketsIds = await this.cryptoAvisosV1.getTicketsIdsByAddress(buyer.address);
+        expect(ticketsIds.length).greaterThan(0);
+    });
+
 });
