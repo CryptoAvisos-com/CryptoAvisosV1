@@ -2,7 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("hardhat-gas-reporter");
 
-const { rinkeby, ethereum, bsc, polygon, privateKeyDeployer } = require('./secrets.json');
+const { rinkeby, ethereum, bsc, polygon, privateKeyDeployer, privateKeyTesting } = require('./secrets.json');
 
 module.exports = {
   solidity: {
@@ -17,7 +17,7 @@ module.exports = {
   networks: {
     rinkeby: {
       url: rinkeby.rpc,
-      accounts: [privateKeyDeployer]
+      accounts: [privateKeyTesting]
     },
     ethereum: {
       url: ethereum.rpc,

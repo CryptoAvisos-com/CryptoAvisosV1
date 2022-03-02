@@ -45,10 +45,10 @@ async function main() {
     }
 
     //Verify
-    // await hre.run("verify:verify", {
-    //     address: cryptoAvisosV1.address,
-    //     constructorArguments: [ethers.utils.parseUnits(String(initialFee))],
-    // });
+    await hre.run("verify:verify", {
+        address: cryptoAvisosV1.address,
+        constructorArguments: [ethers.utils.parseUnits(String(initialFee))],
+    });
 
 }
 
