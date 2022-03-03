@@ -18,35 +18,51 @@
 
 ## Detailed information about contract operation:
 
-OnlyOwner functions:
+**OnlyOwner** functions:
 
 - prepareFee & implementFee: used by admins to set the fee of the purchases with a 7 days wait time.
 - claimFees: used by admins to claim collected fees.
 - submitProduct: creates a new product in the contract. Product id should be unique.
-- markAsPaid: mark a product as paid. Used to mark as paid a product paid in other chain.
+- switchEnable: change enabled status of a product
 - releasePay: release the pay to the seller, if all conditions are OK.
 - updateProduct: updates a product. Product id to update should exist, and not be in "SOLD" or "WAITING" status.
 - refundProduct: send to the buyer the cost of the product (included fees).
+- addStock: add units to stock
+- removeStock: remove units from stock
 
-Public functions:
+**Public** functions:
 
 - payProduct: pay a product. 
 
-Product struct:
+**Product** struct:
 
 - price: Price in WEI. (Default for Solidity).
-- status: Product status. (See Status Enum).
 - seller: Product seller, should be able to receive ETH and ERC20.
-- buyer: Product buyer, 0x00 address if not bought yet.
 - token: Contract address of ERC20 to pay the product.(0x00 if it's native coin, example: ETH, BNB, MATIC).
+- stock: How many units of the product for sell
+- enabled: Boolean to check if the product is available
+
+**Ticket** struct:
+- productId: 
+- status: Product status. (See Status Enum).
+- buyer: Product buyer, 0x00 address if not bought yet.
+- tokenPaid: Contract Address of token paid
 - feeCharged: Fee charged for buying a product. Used for refund.
+- pricePaid: Price in WEI paid
 
 ## **Registry**
+
+## Multisigs
 
 |       **Title**        |                         **Address**                          |
 | :--------------------: | :----------------------------------------------------------: |
 |      BSC Multisig      | [0xf0Bfc9f97BAe489411b22Aa69dBCA1170d51182A](https://bscscan.com/address/0xf0Bfc9f97BAe489411b22Aa69dBCA1170d51182A) |
 |    Polygon Multisig    | [0x62D20398Be41397c9Af7eB745471003031c26DF6](https://polygonscan.com/address/0x62D20398Be41397c9Af7eB745471003031c26DF6) |
+
+## Contracts
+
+|       **Title**        |                         **Address**                          |
+| :--------------------: | :----------------------------------------------------------: |
 |   CryptoAvisosV1 BSC   | [0xd77DBc54a318a86Aa93954B23Ca2F57BA1E3c0a9](https://bscscan.com/address/0xd77dbc54a318a86aa93954b23ca2f57ba1e3c0a9) |
 | CryptoAvisosV1 Polygon | [0xd77DBc54a318a86Aa93954B23Ca2F57BA1E3c0a9](https://polygonscan.com/address/0xd77dbc54a318a86aa93954b23ca2f57ba1e3c0a9) |
 
