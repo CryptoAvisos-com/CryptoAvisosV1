@@ -65,4 +65,5 @@
 | :--------------------: | :----------------------------------------------------------: |
 |   CryptoAvisosV1 BSC   | [0xd77DBc54a318a86Aa93954B23Ca2F57BA1E3c0a9](https://bscscan.com/address/0xd77dbc54a318a86aa93954b23ca2f57ba1e3c0a9) |
 | CryptoAvisosV1 Polygon | [0xd77DBc54a318a86Aa93954B23Ca2F57BA1E3c0a9](https://polygonscan.com/address/0xd77dbc54a318a86aa93954b23ca2f57ba1e3c0a9) |
-
+|   CryptoAvisosV1.1 BSC   | [0x3deFBEc15F95e0Aaa31205059B64522BB3cF1828](https://bscscan.com/address/0x3deFBEc15F95e0Aaa31205059B64522BB3cF1828) |
+| CryptoAvisosV1.1 Polygon | [0x3deFBEc15F95e0Aaa31205059B64522BB3cF1828](https://polygonscan.com/address/0x3deFBEc15F95e0Aaa31205059B64522BB3cF1828) |
