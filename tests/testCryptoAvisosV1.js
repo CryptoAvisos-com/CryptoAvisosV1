@@ -152,6 +152,19 @@ describe("CryptoAvisosV1", function () {
         expect(Number(daiBalanceBuyerAfter)).equal(Number(daiBalanceBuyerBefore) - Number(ethers.utils.formatUnits(product.price)));
         expect(Number(daiBalanceContractAfter)).equal(Number(daiBalanceContractBefore) + Number(ethers.utils.formatUnits(product.price)));
         expect(Number(product.stock)).equal(Number(stockBefore) - 1);
+
+        let claimableFee = await this.cryptoAvisosV1.claimableFee(productBefore.token);
+        expect(Number(claimableFee)).equal(Number(productBefore.price * fee / 100));
+
+        let latestBlock = await ethers.provider.getBlock("latest");
+        let ticketIdTest = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint", "address", "uint", "uint" ], [productArray[0], buyer.address, latestBlock.number, stockBefore]));
+        let ticketToRelease = await this.cryptoAvisosV1.productTicketsMapping(ticketIdTest);
+        expect(ticketToRelease.productId).eq(productArray[0]);
+        expect(ticketToRelease.status).eq(0); // WAITING
+        expect(ticketToRelease.buyer).eq(buyer.address);
+        expect(ticketToRelease.tokenPaid).eq(this.dai.address);
+        expect(Number(ticketToRelease.pricePaid)).equal(Number(productBefore.price));
+        expect(Number(ticketToRelease.feeCharged)).equal(Number(productBefore.price * fee / 100));
     });
 
     it("Should pay a product with ETH, succesfully...", async function () {
@@ -176,6 +189,19 @@ describe("CryptoAvisosV1", function () {
         expect(Number(ethBalanceBuyerAfter)).closeTo(Number(ethBalanceBuyerBefore) - Number(ethers.utils.formatUnits(productAfter.price)), 0.01);
         expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) + Number(ethers.utils.formatUnits(productAfter.price)));
         expect(Number(productAfter.stock)).equal(Number(stockBefore) - 1);
+
+        let claimableFee = await this.cryptoAvisosV1.claimableFee(productBefore.token);
+        expect(Number(claimableFee)).equal(Number(productBefore.price * fee / 100));
+
+        let latestBlock = await ethers.provider.getBlock("latest");
+        ticketIdTest = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint", "address", "uint", "uint" ], [productArray[1], buyer.address, latestBlock.number, stockBefore]));
+        let ticketToRelease = await this.cryptoAvisosV1.productTicketsMapping(ticketIdTest);
+        expect(ticketToRelease.productId).equal(productArray[1]);
+        expect(ticketToRelease.status).equal(0); // WAITING
+        expect(ticketToRelease.buyer).equal(buyer.address);
+        expect(ticketToRelease.tokenPaid).equal(ethers.constants.AddressZero);
+        expect(Number(ticketToRelease.pricePaid)).equal(Number(productBefore.price));
+        expect(Number(ticketToRelease.feeCharged)).equal(Number(productBefore.price * fee / 100));
     });
 
     it("Should release DAI from product pay...", async function () {
@@ -195,6 +221,9 @@ describe("CryptoAvisosV1", function () {
         let product = await this.cryptoAvisosV1.productMapping(productArray[0]);
         expect(Number(daiBalanceSellerAfter)).equal(Number(daiBalanceSellerBefore) + Number(ethers.utils.formatUnits(product.price)) - (fee * Number(ethers.utils.formatUnits(product.price)) / 100));
         expect(Number(daiBalanceContractAfter)).equal(Number(daiBalanceContractBefore) - Number(ethers.utils.formatUnits(product.price)) + (fee * Number(ethers.utils.formatUnits(product.price)) / 100));
+
+        let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketToRelease[0]);
+        expect(ticket.status).equal(1); // SOLD
     });
 
     it("Should release ETH from product pay...", async function () {
@@ -212,6 +241,9 @@ describe("CryptoAvisosV1", function () {
         let product = await this.cryptoAvisosV1.productMapping(productArray[1]);
         expect(Number(ethBalanceSellerAfter)).equal(Number(ethBalanceSellerBefore) + Number(ethers.utils.formatUnits(product.price)) - (fee * Number(ethers.utils.formatUnits(product.price)) / 100));
         expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) - Number(ethers.utils.formatUnits(product.price)) + (fee * Number(ethers.utils.formatUnits(product.price)) / 100));
+
+        let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketToRelease[0]);
+        expect(ticket.status).equal(1); // SOLD
     });
 
     it("Should refund a product in DAI...", async function () {
@@ -236,6 +268,9 @@ describe("CryptoAvisosV1", function () {
 
         expect(Number(balanceDaiAfter)).equal(Number(balanceDaiBefore));
         expect(Number(balanceDaiFeesBefore)).greaterThanOrEqual(Number(balanceDaiFeesAfter));
+
+        let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketProduct2[0]);
+        expect(ticket.status).equal(1); // SOLD
     });
 
     it("Should refund a product in ETH...", async function () {
@@ -254,6 +289,9 @@ describe("CryptoAvisosV1", function () {
 
         expect(Number(balanceEthAfter)).to.be.closeTo(Number(balanceEthBefore), 0.01);
         expect(Number(balanceEthFeesBefore)).greaterThanOrEqual(Number(balanceEthFeesAfter));
+
+        let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketProduct3[0]);
+        expect(ticket.status).equal(1); // SOLD
     });
 
     it("Should claim fees in DAI, succesfully...", async function () {
