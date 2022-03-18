@@ -154,7 +154,7 @@ describe("CryptoAvisosV1", function () {
         expect(Number(product.stock)).equal(Number(stockBefore) - 1);
 
         let claimableFee = await this.cryptoAvisosV1.claimableFee(productBefore.token);
-        expect(claimableFee).equal(Number(productBefore.price * fee / 100));
+        expect(Number(claimableFee)).equal(Number(productBefore.price * fee / 100));
 
         let latestBlock = await ethers.provider.getBlock("latest");
         let ticketIdTest = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint", "address", "uint", "uint" ], [productArray[0], buyer.address, latestBlock.number, stockBefore]));
@@ -191,7 +191,7 @@ describe("CryptoAvisosV1", function () {
         expect(Number(productAfter.stock)).equal(Number(stockBefore) - 1);
 
         let claimableFee = await this.cryptoAvisosV1.claimableFee(productBefore.token);
-        expect(claimableFee).equal(Number(productBefore.price * fee / 100));
+        expect(Number(claimableFee)).equal(Number(productBefore.price * fee / 100));
 
         let latestBlock = await ethers.provider.getBlock("latest");
         ticketIdTest = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint", "address", "uint", "uint" ], [productArray[1], buyer.address, latestBlock.number, stockBefore]));
@@ -268,6 +268,9 @@ describe("CryptoAvisosV1", function () {
 
         expect(Number(balanceDaiAfter)).equal(Number(balanceDaiBefore));
         expect(Number(balanceDaiFeesBefore)).greaterThanOrEqual(Number(balanceDaiFeesAfter));
+
+        let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketProduct2[0]);
+        expect(ticket.status).equal(1); // SOLD
     });
 
     it("Should refund a product in ETH...", async function () {
@@ -286,6 +289,9 @@ describe("CryptoAvisosV1", function () {
 
         expect(Number(balanceEthAfter)).to.be.closeTo(Number(balanceEthBefore), 0.01);
         expect(Number(balanceEthFeesBefore)).greaterThanOrEqual(Number(balanceEthFeesAfter));
+
+        let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketProduct3[0]);
+        expect(ticket.status).equal(1); // SOLD
     });
 
     it("Should claim fees in DAI, succesfully...", async function () {
