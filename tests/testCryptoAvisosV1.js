@@ -3,7 +3,7 @@ const { expect } = require("chai");
 describe("CryptoAvisosV1", function () {
 
     let productArray = [256, 266, 276, 286, 296];
-    let fee = 0;
+    let fee = 10;
 
     before(async function () {
         [deployer, seller, buyer] = await ethers.getSigners();
@@ -263,9 +263,13 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(deployer).claimFees(this.dai.address, ethers.utils.parseUnits(balanceToClaim + 1))).to.be.revertedWith("!funds");
 
         let daiBalanceOwnerBefore = ethers.utils.formatUnits(await this.dai.balanceOf(deployer.address));
+        let daiBalanceContractBefore = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
         await this.cryptoAvisosV1.connect(deployer).claimFees(this.dai.address, ethers.utils.parseUnits(balanceToClaim));
         let daiBalanceOwnerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(deployer.address));
+        let daiBalanceContractAfter = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
         expect(Number(daiBalanceOwnerAfter)).closeTo(Number(daiBalanceOwnerBefore) + Number(balanceToClaim), 0.01);
+        expect(Number(daiBalanceContractAfter)).closeTo(Number(daiBalanceContractBefore) - Number(balanceToClaim), 0.01);
     });
 
     it("Should claim fees in ETH, succesfully...", async function () {
@@ -275,9 +279,13 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(deployer).claimFees(ethers.constants.AddressZero, ethers.utils.parseUnits(balanceToClaim + 1))).to.be.revertedWith("!funds");
 
         let ethBalanceOwnerBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(deployer.address));
+        let ethBalanceContractBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
         await this.cryptoAvisosV1.connect(deployer).claimFees(ethers.constants.AddressZero, ethers.utils.parseUnits(balanceToClaim));
         let ethBalanceOwnerAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(deployer.address));
+        let ethBalanceContractAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
+        
         expect(Number(ethBalanceOwnerAfter)).closeTo(Number(ethBalanceOwnerBefore) + Number(balanceToClaim), 0.01);
+        expect(Number(ethBalanceContractAfter)).closeTo(Number(ethBalanceContractBefore) - Number(balanceToClaim), 0.01);
     });
 
     it("Should add stock, successfully...", async function () {
