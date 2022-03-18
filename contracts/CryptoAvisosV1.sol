@@ -229,7 +229,7 @@ contract CryptoAvisosV1 is Ownable {
 
         Product memory product = productMapping[ticket.productId];
         require(Status.WAITING == ticket.status, "!waiting");
-        uint finalPrice = ticket.pricePaid;
+        uint finalPrice = ticket.pricePaid - ticket.feeCharged;
 
         if (ticket.tokenPaid == address(0)) {
             //Pay with ether (or native coin)
