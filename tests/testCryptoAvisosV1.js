@@ -155,8 +155,9 @@ describe("CryptoAvisosV1", function () {
         expect(Number(daiBalanceContractAfter)).equal(Number(daiBalanceContractBefore) + Number(ethers.utils.formatUnits(product.price)));
         expect(Number(product.stock)).equal(Number(stockBefore) - 1);
 
+        // Fee to claim after pay should be zero
         let claimableFee = await this.cryptoAvisosV1.claimableFee(productBefore.token);
-        expect(Number(claimableFee)).equal(Number(productBefore.price * fee / 100));
+        expect(Number(claimableFee)).equal(0);
 
         let latestBlock = await ethers.provider.getBlock("latest");
         let ticketIdTest = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint", "address", "uint", "uint" ], [productArray[0], buyer.address, latestBlock.number, stockBefore]));
@@ -192,8 +193,9 @@ describe("CryptoAvisosV1", function () {
         expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) + Number(ethers.utils.formatUnits(productAfter.price)));
         expect(Number(productAfter.stock)).equal(Number(stockBefore) - 1);
 
+        // Fee to claim after pay should be zero
         let claimableFee = await this.cryptoAvisosV1.claimableFee(productBefore.token);
-        expect(Number(claimableFee)).equal(Number(productBefore.price * fee / 100));
+        expect(Number(claimableFee)).equal(0);
 
         let latestBlock = await ethers.provider.getBlock("latest");
         ticketIdTest = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode([ "uint", "address", "uint", "uint" ], [productArray[1], buyer.address, latestBlock.number, stockBefore]));
@@ -226,6 +228,10 @@ describe("CryptoAvisosV1", function () {
 
         let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketToRelease[0]);
         expect(ticket.status).equal(1); // SOLD
+
+        // Fee to claim added after release (can't be refunded)
+        let claimableFee = await this.cryptoAvisosV1.claimableFee(ticket.tokenPaid);
+        expect(Number(claimableFee)).equal(Number(ticket.pricePaid * fee / 100));
     });
 
     it("Should release ETH from product pay...", async function () {
@@ -246,6 +252,10 @@ describe("CryptoAvisosV1", function () {
 
         let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketToRelease[0]);
         expect(ticket.status).equal(1); // SOLD
+
+        // Fee to claim added after release (can't be refunded)
+        let claimableFee = await this.cryptoAvisosV1.claimableFee(ticket.tokenPaid);
+        expect(Number(claimableFee)).equal(Number(ticket.pricePaid * fee / 100));
     });
 
     it("Should refund a product in DAI...", async function () {
