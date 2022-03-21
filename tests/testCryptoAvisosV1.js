@@ -2,7 +2,7 @@ const { expect } = require("chai");
 
 describe("CryptoAvisosV1", function () {
 
-    let productArray = [256, 266, 276, 286, 296];
+    let productArray = [256, 266, 276, 286, 296, 236];
     let fee = 10;
 
     before(async function () {
@@ -64,6 +64,8 @@ describe("CryptoAvisosV1", function () {
         //Submitting other products
         let product3 = productArray[2];
         await this.cryptoAvisosV1.submitProduct(product3, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
+        let product6 = productArray[5];
+        await this.cryptoAvisosV1.submitProduct(product6, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
     });
 
     it("Should submit a product payable with ETH, succesfully...", async function () {
@@ -371,6 +373,76 @@ describe("CryptoAvisosV1", function () {
     it("Should getTicketsIdsByAddress, successfully...", async function () {
         let ticketsIds = await this.cryptoAvisosV1.getTicketsIdsByAddress(buyer.address);
         expect(ticketsIds.length).greaterThan(0);
+    });
+
+    it("Should claim all available fees in DAI and be able to refund a waiting product successfully...", async function () {
+        let balanceToClaim = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(this.dai.address));
+        // Balance to claim is ZERO
+        expect(Number(balanceToClaim)).equal(Number(0));
+
+        //Approve DAI
+        let daiDecimals = await this.dai.decimals();
+        await this.dai.connect(buyer).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits("10000", daiDecimals));
+
+        let daiBalanceBuyerBeforePayment = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
+        let daiBalanceContractBeforePayment = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Pay 2 products in DAI
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[2]);
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[5]);
+
+        let daiBalanceBuyerAfterPayment = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
+        let daiBalanceContractAfterPayment = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Assert balances after payments
+        let product2 = await this.cryptoAvisosV1.productMapping(productArray[2]);
+        let product5 = await this.cryptoAvisosV1.productMapping(productArray[5]);
+        expect(Number(daiBalanceBuyerAfterPayment)).equal(Number(daiBalanceBuyerBeforePayment) - Number(ethers.utils.formatUnits(product2.price)) - Number(ethers.utils.formatUnits(product5.price)));
+        expect(Number(daiBalanceContractAfterPayment)).equal(Number(daiBalanceContractBeforePayment) + Number(ethers.utils.formatUnits(product2.price)) + Number(ethers.utils.formatUnits(product5.price)));
+
+        let daiBalanceSellerBeforeRelease = ethers.utils.formatUnits(await this.dai.balanceOf(seller.address));
+        let daiBalanceContractBeforeRelease = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Release one ticket, the other keeps WAITING
+        let ticketProduct = await this.cryptoAvisosV1.getTicketsIdsByProduct(productArray[2]);
+        await this.cryptoAvisosV1.connect(deployer).releasePay(ticketProduct[1]);
+
+        let daiBalanceSellerAfterRelease = ethers.utils.formatUnits(await this.dai.balanceOf(seller.address));
+        let daiBalanceContractAfterRelease = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Assert balances after release
+        let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketProduct[1]);
+        expect(Number(daiBalanceSellerAfterRelease)).equal(Number(daiBalanceSellerBeforeRelease) + Number(ethers.utils.formatUnits(ticket.pricePaid)) - Number(ethers.utils.formatUnits(ticket.feeCharged)));
+        expect(Number(daiBalanceContractAfterRelease)).equal(Number(daiBalanceContractBeforeRelease) - Number(ethers.utils.formatUnits(ticket.pricePaid)) + Number(ethers.utils.formatUnits(ticket.feeCharged)));
+
+        let daiBalanceOwnerBeforeClaim = ethers.utils.formatUnits(await this.dai.balanceOf(deployer.address));
+        let daiBalanceContractBeforeClaim = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Admin claim available fees
+        let balanceToClaimAfterPayments = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(this.dai.address));
+        await this.cryptoAvisosV1.connect(deployer).claimFees(this.dai.address, ethers.utils.parseUnits(balanceToClaimAfterPayments));
+
+        let daiBalanceOwnerAfterClaim = ethers.utils.formatUnits(await this.dai.balanceOf(deployer.address));
+        let daiBalanceContractAfterClaim = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Assert balances after claim fees of released tickets
+        expect(Number(daiBalanceOwnerAfterClaim)).equal(Number(daiBalanceOwnerBeforeClaim) + Number(balanceToClaimAfterPayments));
+        expect(Number(daiBalanceContractAfterClaim)).equal(Number(daiBalanceContractBeforeClaim) - Number(balanceToClaimAfterPayments));
+
+        let daiBalanceBuyerBeforeRefund = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
+        let daiBalanceContractBeforeRefund = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Admin refund WAITING ticket
+        let ticketProduct5 = await this.cryptoAvisosV1.getTicketsIdsByProduct(productArray[5]);
+        await this.cryptoAvisosV1.refundProduct(ticketProduct5[0]);
+
+        let daiBalanceBuyerAfterRefund = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
+        let daiBalanceContractAfterRefund = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        // Assert balances after claim fees of released tickets
+        expect(Number(daiBalanceBuyerAfterPayment)).equal(Number(daiBalanceBuyerBeforePayment) + Number(ethers.utils.formatUnits(product5.price)));
+        expect(Number(daiBalanceContractAfterPayment)).equal(Number(daiBalanceContractBeforePayment) - Number(ethers.utils.formatUnits(product5.price)));
+
     });
 
 });
