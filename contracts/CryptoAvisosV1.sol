@@ -209,7 +209,6 @@ contract CryptoAvisosV1 is Ownable {
         }
 
         uint toFee = product.price * fee / 100e18;
-        claimableFee[product.token] += toFee;
 
         //Create ticket
         uint ticketId = uint(keccak256(abi.encode(productId, msg.sender, block.number, product.stock)));
@@ -238,6 +237,8 @@ contract CryptoAvisosV1 is Ownable {
             //Pay with token
             IERC20(ticket.tokenPaid).transfer(product.seller, finalPrice);
         }
+
+        claimableFee[product.token] += ticket.feeCharged;
 
         ticket.status = Status.SOLD;
         productTicketsMapping[ticketId] = ticket;
@@ -278,7 +279,6 @@ contract CryptoAvisosV1 is Ownable {
             //ERC20
             IERC20(ticket.tokenPaid).transfer(ticket.buyer, ticket.pricePaid);
         }
-        claimableFee[ticket.tokenPaid] -= ticket.feeCharged;
         ticket.status = Status.SOLD;
         
         productTicketsMapping[ticketId] = ticket;
