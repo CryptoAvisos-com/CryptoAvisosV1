@@ -440,8 +440,8 @@ describe("CryptoAvisosV1", function () {
         let daiBalanceContractAfterRefund = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
 
         // Assert balances after claim fees of released tickets
-        expect(Number(daiBalanceBuyerAfterPayment)).equal(Number(daiBalanceBuyerBeforePayment) + Number(ethers.utils.formatUnits(product5.price)));
-        expect(Number(daiBalanceContractAfterPayment)).equal(Number(daiBalanceContractBeforePayment) - Number(ethers.utils.formatUnits(product5.price)));
+        expect(Number(daiBalanceBuyerAfterRefund)).equal(Number(daiBalanceBuyerBeforeRefund) + Number(ethers.utils.formatUnits(product5.price)));
+        expect(Number(daiBalanceContractAfterRefund)).equal(Number(daiBalanceContractBeforeRefund) - Number(ethers.utils.formatUnits(product5.price)));
 
     });
 
