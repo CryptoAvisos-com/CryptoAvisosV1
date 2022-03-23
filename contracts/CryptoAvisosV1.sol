@@ -13,6 +13,7 @@ contract CryptoAvisosV1 is Ownable {
     mapping(address => uint) public claimableFee;
     uint[] private productsIds;
     uint[] private ticketsIds;
+
     uint public fee;
     uint public lastUnlockTimeFee;
     uint public lastFeeToSet;
@@ -37,8 +38,8 @@ contract CryptoAvisosV1 is Ownable {
         uint price; //In WEI
         address payable seller;
         address token; //Contract address or 0x00 if it"s native coin
-        uint stock;
         bool enabled;
+        uint stock;
     }
 
     struct Ticket {
@@ -173,7 +174,7 @@ contract CryptoAvisosV1 is Ownable {
         require(seller != address(0), "!seller");
         require(stock != 0, "!stock");
         require(productMapping[productId].seller == address(0), "alreadyExist");
-        Product memory product = Product(price, seller, token, stock, true);
+        Product memory product = Product(price, seller, token, true, stock);
         productMapping[productId] = product;
         productsIds.push(productId);
         emit ProductSubmitted(productId);
@@ -259,7 +260,7 @@ contract CryptoAvisosV1 is Ownable {
         require(seller != address(0), "!seller");
         Product memory product = productMapping[productId];
         require(product.seller != address(0), "!exist");
-        product = Product(price, seller, token, stock, true);
+        product = Product(price, seller, token,  true, stock);
         productMapping[productId] = product;
         emit ProductUpdated(productId);
     }
