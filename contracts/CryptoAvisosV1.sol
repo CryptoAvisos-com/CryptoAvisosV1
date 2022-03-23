@@ -8,15 +8,15 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /// @author TheAustrian
 contract CryptoAvisosV1 is Ownable {
 
-    uint public fee;
-    uint public lastUnlockTimeFee;
-    uint public lastFeeToSet;
-
     mapping(uint => Product) public productMapping; //productId in CA platform => Product
     mapping(uint => Ticket) public productTicketsMapping; //uint(keccak256(productId, buyer, blockNumber, product.stock)) => Ticket
     mapping(address => uint) public claimableFee;
     uint[] private productsIds;
     uint[] private ticketsIds;
+
+    uint public fee;
+    uint public lastUnlockTimeFee;
+    uint public lastFeeToSet;
 
     event ProductSubmitted(uint productId);
     event ProductPaid(uint productId, uint ticketId);
