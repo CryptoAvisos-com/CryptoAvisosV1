@@ -3,20 +3,26 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /// @title A smart contract to buy and sell products on CryptoAvisos.com
 /// @author TheAustrian
 contract CryptoAvisosV1 is Ownable {
+    using ECDSA for bytes32;
 
     mapping(uint => Product) public productMapping; //productId in CA platform => Product
     mapping(uint => Ticket) public productTicketsMapping; //uint(keccak256(productId, buyer, blockNumber, product.stock)) => Ticket
     mapping(address => uint) public claimableFee;
+    mapping(bytes32 => bool) public executed;
     uint[] private productsIds;
     uint[] private ticketsIds;
 
     uint public fee;
     uint public lastUnlockTimeFee;
     uint public lastFeeToSet;
+    uint public nonce;
+
+    address public immutable allowedSigner;
 
     event ProductSubmitted(uint productId);
     event ProductPaid(uint productId, uint ticketId);
@@ -30,8 +36,9 @@ contract CryptoAvisosV1 is Ownable {
     event StockAdded(uint productId, uint stockAdded);
     event StockRemoved(uint productId, uint stockRemoved);
 
-    constructor(uint newFee){
+    constructor(uint newFee, address _allowedSigner){
         _setFee(newFee);
+        allowedSigner = _allowedSigner;
     }
 
     struct Product {
@@ -126,6 +133,16 @@ contract CryptoAvisosV1 is Ownable {
         emit FeeSetted(previousFee, newFee);
     }
 
+    function getHash(
+        uint _productId,
+        address _buyer,
+        uint _cost,
+        uint _chainId,
+        uint _nonce
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_productId, _buyer, _cost, _chainId, _nonce));
+    }
+
     /// @notice Used for admin as first step to set fee (1/2)
     /// @dev Prepare to set fee (wait 7 days to set. Timelock kind of)
     /// @param newFee new fee to prepare
@@ -195,11 +212,17 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Public function to pay a product
     /// @dev It generates a ticket, can be pay with ETH or ERC20
     /// @param productId ID of the product in CA DB
-    function payProduct(uint productId) external payable {
+    function payProduct(uint productId, uint shippingCost, bytes memory signedMessage) external payable {
         Product memory product = productMapping[productId];
         require(product.seller != address(0), "!exist");
         require(product.enabled, "!enabled");
         require(product.stock != 0, "!stock");
+
+        // verifing signature
+        bytes32 _hash = getHash(productId, msg.sender, shippingCost, block.chainid, nonce);
+        bytes32 ethSignedHash = _hash.toEthSignedMessageHash();
+        address signer = ethSignedHash.recover(signedMessage);
+        require(allowedSigner == signer, "!allowedSigner");
 
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
@@ -217,6 +240,7 @@ contract CryptoAvisosV1 is Ownable {
         ticketsIds.push(ticketId);
 
         product.stock -= 1;
+        nonce++;
         productMapping[productId] = product;
         emit ProductPaid(productId, ticketId);
     }
