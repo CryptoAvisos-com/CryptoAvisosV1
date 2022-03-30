@@ -14,6 +14,7 @@ contract CryptoAvisosV1 is Ownable {
     mapping(uint => Ticket) public productTicketsMapping; //uint(keccak256(productId, buyer, blockNumber, product.stock)) => Ticket
     mapping(address => uint) public claimableFee;
     mapping(bytes => bool) public executed;
+    mapping(address => bool) public sellerWhitlist;
     uint[] private productsIds;
     uint[] private ticketsIds;
 
@@ -35,11 +36,18 @@ contract CryptoAvisosV1 is Ownable {
     event PreparedFee(uint fee, uint unlockTime);
     event StockAdded(uint productId, uint stockAdded);
     event StockRemoved(uint productId, uint stockRemoved);
+    event SellerWhitlistAdded(address seller);
+    event SellerWhitlistRemoved(address seller);
 
     constructor(uint newFee, address _allowedSigner){
         _setFee(newFee);
         require(_allowedSigner != address(0), "!allowedSigner");
         allowedSigner = _allowedSigner;
+    }
+
+    modifier onlyWhitlisted() {
+         require(owner() == _msgSender() || sellerWhitlist[msg.sender], '!whitlisted');
+         _;
     }
 
     struct Product {
@@ -186,12 +194,13 @@ contract CryptoAvisosV1 is Ownable {
     /// @param price price (with corresponding ERC20 decimals)
     /// @param token address of the token
     /// @param stock how much units of the product
-    function submitProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyOwner {
+    function submitProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyWhitlisted {
         require(productId != 0, "!productId");
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
         require(stock != 0, "!stock");
         require(productMapping[productId].seller == address(0), "alreadyExist");
+        require(owner() == msg.sender || seller == msg.sender, "!sender");
         Product memory product = Product(price, seller, token, true, stock);
         productMapping[productId] = product;
         productsIds.push(productId);
@@ -202,9 +211,10 @@ contract CryptoAvisosV1 is Ownable {
     /// @dev Modifies value of `enabled` in Product Struct
     /// @param productId ID of the product in CA DB
     /// @param isEnabled value to set
-    function switchEnable(uint productId, bool isEnabled) external onlyOwner {
+    function switchEnable(uint productId, bool isEnabled) external onlyWhitlisted {
         Product memory product = productMapping[productId];
         require(product.seller != address(0), "!exist");
+        require(owner() == msg.sender || product.seller == msg.sender, "!sender");
         product.enabled = isEnabled;
         productMapping[productId] = product;
         emit SwitchChanged(productId, isEnabled);
@@ -284,13 +294,14 @@ contract CryptoAvisosV1 is Ownable {
     /// @param price price (with corresponding ERC20 decimals)
     /// @param token address of the token
     /// @param stock how much units of the product
-    function updateProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyOwner {
+    function updateProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyWhitlisted {
         //Update a product
         require(productId != 0, "!productId");
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
         Product memory product = productMapping[productId];
         require(product.seller != address(0), "!exist");
+        require(owner() == msg.sender || product.seller == msg.sender, "!sender");
         product = Product(price, seller, token,  true, stock);
         productMapping[productId] = product;
         emit ProductUpdated(productId);
@@ -320,12 +331,13 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Add units to stock in a specific product
     /// @param productId ID of the product in CA DB
     /// @param stockToAdd How many units add to stock
-    function addStock(uint productId, uint stockToAdd) external onlyOwner {
+    function addStock(uint productId, uint stockToAdd) external onlyWhitlisted {
         //Add stock to a product
         Product memory product = productMapping[productId];
         require(productId != 0, "!productId");
         require(stockToAdd != 0, "!stockToAdd");
         require(product.seller != address(0), "!exist");
+        require(owner() == msg.sender || product.seller == msg.sender, "!sender");
         product.stock += stockToAdd;
         productMapping[productId] = product;
         emit StockAdded(productId, stockToAdd);
@@ -334,15 +346,29 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Remove units to stock in a specific product
     /// @param productId ID of the product in CA DB
     /// @param stockToRemove How many units remove from stock
-    function removeStock(uint productId, uint stockToRemove) external onlyOwner {
+    function removeStock(uint productId, uint stockToRemove) external onlyWhitlisted {
         //Add stock to a product
         Product memory product = productMapping[productId];
         require(productId != 0, "!productId");
-        require(product.stock >= stockToRemove, "!stockToRemove");
         require(product.seller != address(0), "!exist");
+        require(product.stock >= stockToRemove, "!stockToRemove");
+        require(owner() == msg.sender || product.seller == msg.sender, "!sender");
         product.stock -= stockToRemove;
         productMapping[productId] = product;
         emit StockRemoved(productId, stockToRemove);
     }
     
+    /// @notice Add a seller address to the whitlisted in order to manage their own products
+    /// @param seller Address of the seller
+    function addWhitlistedSeller(address seller) external onlyOwner {
+        sellerWhitlist[seller] = true;
+        emit SellerWhitlistAdded(seller);
+    }
+
+    /// @notice Remove a seller address to the whitlisted in order to manage their own products
+    /// @param seller Address of the seller
+    function removeWhitlistedSeller(address seller) external onlyOwner {
+        sellerWhitlist[seller] = false;
+        emit SellerWhitlistRemoved(seller);
+    }
 }

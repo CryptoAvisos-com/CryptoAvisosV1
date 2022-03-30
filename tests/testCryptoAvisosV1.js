@@ -6,11 +6,11 @@ describe("CryptoAvisosV1", function () {
     let fee = 10;
 
     before(async function () {
-        [deployer, seller, buyer] = await ethers.getSigners();
+        [deployer, seller, buyer, allowedSigner, otherSeller] = await ethers.getSigners();
 
         //Deploy CAV1
         this.CryptoAvisosV1 = await ethers.getContractFactory("CryptoAvisosV1");
-        this.cryptoAvisosV1 = await this.CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(1)));
+        this.cryptoAvisosV1 = await this.CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(1)), allowedSigner.address);
         await this.cryptoAvisosV1.deployed();
 
         //Deploy Example DAI
@@ -38,6 +38,20 @@ describe("CryptoAvisosV1", function () {
         expect(Number(ethers.utils.formatUnits(await this.cryptoAvisosV1.fee()))).to.equal(fee);
     });
 
+    it("Should add/remove a whitlisted seller address, succesfully...", async function () {
+        let productSeller = seller.address;
+        // Call to a function with the onlyWhitlisted modifier will return !whitlisted
+        await expect(this.cryptoAvisosV1.connect(seller).submitProduct(0, productSeller, 1, this.dai.address, 0)).to.be.revertedWith("!whitlisted");
+        // Adding seller as whitlisted
+        await this.cryptoAvisosV1.addWhitlistedSeller(productSeller);
+        // Call to a function with the onlyWhitlisted modifier will pass the modifier validation (return an error validation from the submitProduct function)
+        await expect(this.cryptoAvisosV1.connect(seller).submitProduct(0, productSeller, 1, this.dai.address, 0)).to.be.revertedWith("!productId");
+        // Removing seller from whitlist
+        await this.cryptoAvisosV1.removeWhitlistedSeller(productSeller);
+        // Call to a function with the onlyWhitlisted modifier will return !whitlisted
+        await expect(this.cryptoAvisosV1.connect(seller).submitProduct(0, productSeller, 1, this.dai.address, 0)).to.be.revertedWith("!whitlisted");
+    });
+
     it("Should submit a product payable with DAI, succesfully...", async function () {
         //Submit product
         let productId = productArray[0];
@@ -47,25 +61,39 @@ describe("CryptoAvisosV1", function () {
         let daiDecimals = await this.dai.decimals();
         let stock = 5;
 
+        // Assert invalid product id error
         await expect(this.cryptoAvisosV1.submitProduct(0, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!productId");
+        // Assert invalid price error
         await expect(this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits("0", daiDecimals), productToken, stock)).to.be.revertedWith("!price");
+        // Assert invalid seller address
         await expect(this.cryptoAvisosV1.submitProduct(productId, ethers.constants.AddressZero, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!seller");
+        // Assert not whitlisted user error
+        await expect(this.cryptoAvisosV1.connect(seller).submitProduct(productId, ethers.constants.AddressZero, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!whitlisted");
+        // Assert whitlisted user try to create a product for another seller address
+        await this.cryptoAvisosV1.addWhitlistedSeller(productSeller);
+        await expect(this.cryptoAvisosV1.connect(seller).submitProduct(productId, otherSeller.address, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!sender");
+        await this.cryptoAvisosV1.removeWhitlistedSeller(productSeller);
+
+        // Assert successfull creation
         await this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
 
-        //View product
+        //Assert product data
         let productMapping = await this.cryptoAvisosV1.productMapping(productId);
         expect(Number(ethers.utils.formatUnits(productMapping.price))).equal(Number(productPrice));
         expect(productMapping.seller).equal(productSeller);
         expect(productMapping.token).equal(productToken);
         expect(productMapping.stock).equal(stock);
 
+        // Assert already exist product error
         await expect(this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("alreadyExist");
 
-        //Submitting other products
+        //Submitting other products as whitlisted user
+        await this.cryptoAvisosV1.addWhitlistedSeller(productSeller);
         let product3 = productArray[2];
-        await this.cryptoAvisosV1.submitProduct(product3, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
+        await this.cryptoAvisosV1.connect(seller).submitProduct(product3, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);        
         let product6 = productArray[5];
-        await this.cryptoAvisosV1.submitProduct(product6, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
+        await this.cryptoAvisosV1.connect(seller).submitProduct(product6, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
+        await this.cryptoAvisosV1.removeWhitlistedSeller(productSeller);
     });
 
     it("Should submit a product payable with ETH, succesfully...", async function () {
@@ -86,14 +114,15 @@ describe("CryptoAvisosV1", function () {
 
         await expect(this.cryptoAvisosV1.submitProduct(productId, productSeller, ethers.utils.parseUnits(productPrice), productToken, stock)).to.be.revertedWith("alreadyExist");
 
-        //Submitting other products
+        //Submitting other products as whitlisted user
+        await this.cryptoAvisosV1.addWhitlistedSeller(productSeller);
         let product4 = productArray[3];
-        await this.cryptoAvisosV1.submitProduct(product4, productSeller, ethers.utils.parseUnits(productPrice), productToken, stock);
-
+        await this.cryptoAvisosV1.connect(seller).submitProduct(product4, productSeller, ethers.utils.parseUnits(productPrice), productToken, stock);
         let product5 = productArray[4];
-        await this.cryptoAvisosV1.submitProduct(product5, productSeller, ethers.utils.parseUnits(productPrice), productToken, stock);
+        await this.cryptoAvisosV1.connect(seller).submitProduct(product5, productSeller, ethers.utils.parseUnits(productPrice), productToken, stock);
+        await this.cryptoAvisosV1.removeWhitlistedSeller(productSeller);
     });
-
+    
     it("Should update a product, successfully...", async function () {
         //Update product
         let productId = productArray[0];
@@ -103,31 +132,64 @@ describe("CryptoAvisosV1", function () {
         let daiDecimals = await this.dai.decimals();
         let stock = 5;
 
+        // Assert invalid product id error
         await expect(this.cryptoAvisosV1.updateProduct(0, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!productId");
+        // Assert invalid price error
         await expect(this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits("0", daiDecimals), productToken, stock)).to.be.revertedWith("!price");
+        // Assert invalid seller address error
         await expect(this.cryptoAvisosV1.updateProduct(productId, ethers.constants.AddressZero, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!seller");
+        // Assert product not exists error
         await expect(this.cryptoAvisosV1.updateProduct(8000, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!exist");
-        await this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
+        // Assert not whitlisted user error
+        await expect(this.cryptoAvisosV1.connect(otherSeller).updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!whitlisted");
+        // Assert whitlisted user that tries to update a product of another seller address
+        await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
+        await expect(this.cryptoAvisosV1.connect(otherSeller).updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!sender");
+        await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
 
-        //View product
+        // Assert a valid product update as owner
+        await this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock);
         let productMapping = await this.cryptoAvisosV1.productMapping(productId);
         expect(Number(ethers.utils.formatUnits(productMapping.price))).equal(Number(productPrice));
         expect(productMapping.seller).equal(productSeller);
         expect(productMapping.token).equal(productToken);
         expect(productMapping.stock).equal(stock);
+
+        // Assert a valid product update as whitlisted seller
+        await this.cryptoAvisosV1.addWhitlistedSeller(seller.address);
+        await this.cryptoAvisosV1.updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock+1);
+        await this.cryptoAvisosV1.removeWhitlistedSeller(seller.address);
+
+        //View product
+        let productMapping2 = await this.cryptoAvisosV1.productMapping(productId);
+        expect(Number(ethers.utils.formatUnits(productMapping2.price))).equal(Number(productPrice));
+        expect(productMapping2.seller).equal(productSeller);
+        expect(productMapping2.token).equal(productToken);
+        expect(productMapping2.stock).equal(stock+1);
     });
 
     it("Should use switch to enable & disable, successfully...", async function () {
+
+        // Assert not whitlisted user error
+        await expect(this.cryptoAvisosV1.connect(otherSeller).switchEnable(productArray[0], false)).to.be.revertedWith("!whitlisted");
+        // Assert whitlisted user that tries to update a product of another seller address
+        await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
+        await expect(this.cryptoAvisosV1.connect(otherSeller).switchEnable(productArray[0], false)).to.be.revertedWith("!sender");
+        await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
+
         //Disable product
         await this.cryptoAvisosV1.switchEnable(productArray[0], false);
-        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0])).to.be.revertedWith("!enabled");
-
-        //Enable product
-        await this.cryptoAvisosV1.switchEnable(productArray[0], true);
         let product = await this.cryptoAvisosV1.productMapping(productArray[0]);
-        expect(product.enabled).equal(true);
-    });
+        expect(product.enabled).equal(false);
 
+        //Enable product as whitlisted seller
+        await this.cryptoAvisosV1.addWhitlistedSeller(seller.address);
+        await this.cryptoAvisosV1.switchEnable(productArray[0], true);
+        let product2 = await this.cryptoAvisosV1.productMapping(productArray[0]);
+        expect(product2.enabled).equal(true);
+        await this.cryptoAvisosV1.removeWhitlistedSeller(seller.address);
+    });
+      
     it("Should pay a product with DAI, succesfully...", async function () {
         await expect(this.cryptoAvisosV1.connect(buyer).payProduct(5656)).to.be.revertedWith("!exist");
 
@@ -340,16 +402,33 @@ describe("CryptoAvisosV1", function () {
 
     it("Should add stock, successfully...", async function () {
         let productToAdd = productArray[0];
-        let stockToAdd = 6;
+        let stockToAdd = 5;
         let productBefore = await this.cryptoAvisosV1.productMapping(productToAdd);
 
-        await this.cryptoAvisosV1.addStock(productToAdd, stockToAdd);
+        // Assert invalid product id error
         await expect(this.cryptoAvisosV1.addStock(0, stockToAdd)).to.be.revertedWith("!productId");
+        // Assert invalid stock to add error
         await expect(this.cryptoAvisosV1.addStock(productToAdd, 0)).to.be.revertedWith("!stockToAdd");
+        // Assert not exists product error
         await expect(this.cryptoAvisosV1.addStock(420, stockToAdd)).to.be.revertedWith("!exist");
+        // Assert not whitlisted user error
+        await expect(this.cryptoAvisosV1.connect(otherSeller).addStock(productToAdd, stockToAdd)).to.be.revertedWith("!whitlisted");
+        // Assert whitlisted user that tries to update a product of another seller address
+        await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
+        await expect(this.cryptoAvisosV1.connect(otherSeller).addStock(productToAdd, stockToAdd)).to.be.revertedWith("!sender");
+        await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
 
+        // Valid stock update
+        await this.cryptoAvisosV1.addStock(productToAdd, stockToAdd);
         let productAfter = await this.cryptoAvisosV1.productMapping(productToAdd);
         expect(Number(productAfter.stock)).equal(Number(productBefore.stock) + Number(stockToAdd));
+
+        // Valid stock update as whitlisted seller 
+        await this.cryptoAvisosV1.addWhitlistedSeller(seller.address);
+        await this.cryptoAvisosV1.connect(seller).addStock(productToAdd, 1);
+        let productAfter2 = await this.cryptoAvisosV1.productMapping(productToAdd);
+        expect(Number(productAfter2.stock)).equal(Number(productBefore.stock) + Number(stockToAdd + 1));
+        await this.cryptoAvisosV1.removeWhitlistedSeller(seller.address);
     });
 
     it("Should remove stock, successfully...", async function () {
@@ -357,6 +436,19 @@ describe("CryptoAvisosV1", function () {
         let stockToRemove = 6;
         let productBefore = await this.cryptoAvisosV1.productMapping(productToRemove);
 
+        // Assert invalid product id error
+        await expect(this.cryptoAvisosV1.removeStock(0, stockToRemove)).to.be.revertedWith("!productId");
+        // Assert invalid stock to add error
+        await expect(this.cryptoAvisosV1.removeStock(productToRemove, 9999)).to.be.revertedWith("!stockToRemove");
+        // Assert not exists product error
+        await expect(this.cryptoAvisosV1.removeStock(420, stockToRemove)).to.be.revertedWith("!exist");
+        // Assert not whitlisted user error
+        await expect(this.cryptoAvisosV1.connect(otherSeller).removeStock(productToRemove, stockToRemove)).to.be.revertedWith("!whitlisted");
+        // Assert whitlisted user that tries to update a product of another seller address
+        await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
+        await expect(this.cryptoAvisosV1.connect(otherSeller).removeStock(productToRemove, stockToRemove)).to.be.revertedWith("!sender");
+        await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
+        
         await this.cryptoAvisosV1.removeStock(productToRemove, stockToRemove);
         await expect(this.cryptoAvisosV1.removeStock(0, stockToRemove)).to.be.revertedWith("!productId");
         await expect(this.cryptoAvisosV1.removeStock(productToRemove, 40)).to.be.revertedWith("!stockToRemove");
@@ -384,7 +476,7 @@ describe("CryptoAvisosV1", function () {
         let ticketsIds = await this.cryptoAvisosV1.getTicketsIdsByAddress(buyer.address);
         expect(ticketsIds.length).greaterThan(0);
     });
-
+      
     it("Should claim all available fees in DAI and be able to refund a waiting product successfully...", async function () {
         let balanceToClaim = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(this.dai.address));
         // Balance to claim is ZERO
