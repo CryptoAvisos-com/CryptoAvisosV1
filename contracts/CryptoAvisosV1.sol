@@ -13,7 +13,7 @@ contract CryptoAvisosV1 is Ownable {
     mapping(uint => Product) public productMapping; //productId in CA platform => Product
     mapping(uint => Ticket) public productTicketsMapping; //uint(keccak256(productId, buyer, blockNumber, product.stock)) => Ticket
     mapping(address => uint) public claimableFee;
-    mapping(bytes32 => bool) public executed;
+    mapping(bytes => bool) public executed;
     uint[] private productsIds;
     uint[] private ticketsIds;
 
@@ -38,6 +38,7 @@ contract CryptoAvisosV1 is Ownable {
 
     constructor(uint newFee, address _allowedSigner){
         _setFee(newFee);
+        require(_allowedSigner != address(0), "!allowedSigner");
         allowedSigner = _allowedSigner;
     }
 
@@ -210,9 +211,12 @@ contract CryptoAvisosV1 is Ownable {
     }
 
     /// @notice Public function to pay a product
-    /// @dev It generates a ticket, can be pay with ETH or ERC20
+    /// @dev It generates a ticket, can be pay with ETH or ERC20. Verifies the shipping cost
     /// @param productId ID of the product in CA DB
+    /// @param shippingCost Shipping cost in WEI
+    /// @param signedMessage Signed message (hash)
     function payProduct(uint productId, uint shippingCost, bytes memory signedMessage) external payable {
+        require(executed[signedMessage] == false, "!signedMessage");
         Product memory product = productMapping[productId];
         require(product.seller != address(0), "!exist");
         require(product.enabled, "!enabled");
@@ -224,12 +228,14 @@ contract CryptoAvisosV1 is Ownable {
         address signer = ethSignedHash.recover(signedMessage);
         require(allowedSigner == signer, "!allowedSigner");
 
+        uint price = product.price + shippingCost;
+
         if (product.token == address(0)) {
             //Pay with ether (or native coin)
-            require(msg.value == product.price, "!msg.value");
+            require(msg.value == price, "!msg.value");
         }else{
             //Pay with token
-            IERC20(product.token).transferFrom(msg.sender, address(this), product.price);
+            IERC20(product.token).transferFrom(msg.sender, address(this), price);
         }
 
         uint toFee = product.price * fee / 100e18;
@@ -240,6 +246,7 @@ contract CryptoAvisosV1 is Ownable {
         ticketsIds.push(ticketId);
 
         product.stock -= 1;
+        executed[signedMessage] = true;
         nonce++;
         productMapping[productId] = product;
         emit ProductPaid(productId, ticketId);
