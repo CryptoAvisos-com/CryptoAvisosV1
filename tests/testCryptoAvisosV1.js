@@ -191,7 +191,18 @@ describe("CryptoAvisosV1", function () {
     });
       
     it("Should pay a product with DAI, succesfully...", async function () {
-        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(5656)).to.be.revertedWith("!exist");
+        let shippingCost = 10;
+        let nonce = await this.cryptoAvisosV1.nonce();
+        let hashedMessage = ethers.utils.solidityKeccak256(["uint256", "address", "uint256", "uint256", "uint256"], [productArray[0], buyer.address, shippingCost, 31337, Number(nonce)]);
+        let hashedMessageArray = ethers.utils.arrayify(hashedMessage);
+        let signedMessage = await allowedSigner.signMessage(hashedMessageArray);
+
+        // Assert invalid signer
+        let wrongSignerMessage = await buyer.signMessage(hashedMessageArray);
+        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0], shippingCost, wrongSignerMessage)).to.be.revertedWith("!allowedSigner");
+
+        // Assert not valid product error
+        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(5656, shippingCost, signedMessage)).to.be.revertedWith("!exist");
 
         //Approve DAI
         let daiDecimals = await this.dai.decimals();
@@ -206,7 +217,7 @@ describe("CryptoAvisosV1", function () {
         let stockBefore = productBefore.stock;
 
         //Pay product
-        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0]);
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0], shippingCost, signedMessage);
 
         //DAI amount after
         let daiBalanceBuyerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
@@ -230,9 +241,18 @@ describe("CryptoAvisosV1", function () {
         expect(ticketToRelease.tokenPaid).eq(this.dai.address);
         expect(Number(ticketToRelease.pricePaid)).equal(Number(productBefore.price));
         expect(Number(ticketToRelease.feeCharged)).equal(Number(productBefore.price * fee / 100));
+
+        // Assert duplicated signed message validation
+        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0], shippingCost, signedMessage)).to.be.revertedWith("!signedMessage");
     });
 
     it("Should pay a product with ETH, succesfully...", async function () {
+        let shippingCost = 1000000;
+        let nonce = await this.cryptoAvisosV1.nonce();
+        let hashedMessage = ethers.utils.solidityKeccak256(["uint256", "address", "uint256", "uint256", "uint256"], [productArray[1], buyer.address, shippingCost, 31337, Number(nonce)]);
+        let hashedMessageArray = ethers.utils.arrayify(hashedMessage);
+        let signedMessage = await allowedSigner.signMessage(hashedMessageArray);
+
         //ETH amount before
         let ethBalanceBuyerBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(buyer.address));
         let ethBalanceContractBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
@@ -241,9 +261,10 @@ describe("CryptoAvisosV1", function () {
         let productBefore = await this.cryptoAvisosV1.productMapping(productArray[1]);
         let stockBefore = productBefore.stock;
 
+        // Assert no value error
+        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[1], shippingCost, signedMessage, { value: "0" })).to.be.revertedWith("!msg.value");
         //Pay product
-        await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[1], { value: "0" })).to.be.revertedWith("!msg.value");
-        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[1], { value: String(productBefore.price) });
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[1], shippingCost, signedMessage, { value: String(productBefore.price.add(shippingCost)) });
 
         //ETH amount after
         let ethBalanceBuyerAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(buyer.address));
@@ -251,8 +272,9 @@ describe("CryptoAvisosV1", function () {
 
         let productAfter = await this.cryptoAvisosV1.productMapping(productArray[1]);
 
-        expect(Number(ethBalanceBuyerAfter)).closeTo(Number(ethBalanceBuyerBefore) - Number(ethers.utils.formatUnits(productAfter.price)), 0.01);
-        expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) + Number(ethers.utils.formatUnits(productAfter.price)));
+        // Using close to due to the gas paid in trx
+        expect(Number(ethBalanceBuyerAfter)).closeTo(Number(ethBalanceBuyerBefore) - Number(ethers.utils.formatUnits(productAfter.price.add(shippingCost))), 0.01);
+        expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) + Number(ethers.utils.formatUnits(productAfter.price.add(shippingCost))));
         expect(Number(productAfter.stock)).equal(Number(stockBefore) - 1);
 
         // Fee to claim after pay should be zero
