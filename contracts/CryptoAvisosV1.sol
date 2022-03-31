@@ -35,8 +35,8 @@ contract CryptoAvisosV1 is Ownable {
     event FeeSetted(uint previousFee, uint newFee);
     event FeesClaimed(address receiver, address token, uint quantity);
     event PreparedFee(uint fee, uint unlockTime);
-    event StockAdded(uint productId, uint stockAdded);
-    event StockRemoved(uint productId, uint stockRemoved);
+    event StockAdded(uint productId, uint16 stockAdded);
+    event StockRemoved(uint productId, uint16 stockRemoved);
     event SellerWhitelistAdded(address seller);
     event SellerWhitelistRemoved(address seller);
 
@@ -62,19 +62,19 @@ contract CryptoAvisosV1 is Ownable {
     struct Product {
         uint price; //In WEI
         address payable seller;
-        address token; //Contract address or 0x00 if it"s native coin
+        address token; //Contract address or 0x00 if it's native coin
         bool enabled;
-        uint stock;
+        uint16 stock;
     }
 
     struct Ticket {
         uint productId;
         Status status;
         address payable buyer;
-        address tokenPaid; //Holds contract address or 0x00 if it"s native coin used in payment
+        address tokenPaid; //Holds contract address or 0x00 if it's native coin used in payment
         uint feeCharged; //Holds charged fee, in case admin need to refund and fee has changed between pay and refund time
         uint pricePaid; //Holds price paid at moment of payment (without fee)
-        uint shippingCost; //Holds shipping cost
+        uint shippingCost; //Holds shipping cost (In WEI)
     }
 
     enum Status {
@@ -221,7 +221,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param price price (with corresponding ERC20 decimals)
     /// @param token address of the token
     /// @param stock how much units of the product
-    function submitProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyWhitelisted {
+    function submitProduct(uint productId, address payable seller, uint price, address token, uint16 stock) external onlyWhitelisted {
         require(productId != 0, "!productId");
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
@@ -320,13 +320,12 @@ contract CryptoAvisosV1 is Ownable {
     /// @param price price (with corresponding ERC20 decimals)
     /// @param token address of the token
     /// @param stock how much units of the product
-    function updateProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyProductOwner(productId) {
+    function updateProduct(uint productId, address payable seller, uint price, address token, uint16 stock) external onlyProductOwner(productId) {
         //Update a product
-        require(productId != 0, "!productId");
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
         Product memory product = productMapping[productId];
-        product = Product(price, seller, token,  true, stock);
+        product = Product(price, seller, token, true, stock);
         productMapping[productId] = product;
         emit ProductUpdated(productId);
     }
@@ -357,7 +356,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Add units to stock in a specific product
     /// @param productId ID of the product in CA DB
     /// @param stockToAdd How many units add to stock
-    function addStock(uint productId, uint stockToAdd) external onlyProductOwner(productId) {
+    function addStock(uint productId, uint16 stockToAdd) external onlyProductOwner(productId) {
         //Add stock to a product
         Product memory product = productMapping[productId];
         require(stockToAdd != 0, "!stockToAdd");
@@ -369,7 +368,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Remove units to stock in a specific product
     /// @param productId ID of the product in CA DB
     /// @param stockToRemove How many units remove from stock
-    function removeStock(uint productId, uint stockToRemove) external onlyProductOwner(productId) {
+    function removeStock(uint productId, uint16 stockToRemove) external onlyProductOwner(productId) {
         //Add stock to a product
         Product memory product = productMapping[productId];
         require(product.stock >= stockToRemove, "!stockToRemove");
