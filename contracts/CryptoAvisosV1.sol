@@ -13,6 +13,7 @@ contract CryptoAvisosV1 is Ownable {
     mapping(uint => Product) public productMapping; //productId in CA platform => Product
     mapping(uint => Ticket) public productTicketsMapping; //uint(keccak256(productId, buyer, blockNumber, product.stock)) => Ticket
     mapping(address => uint) public claimableFee;
+    mapping(address => uint) public claimableShippingCost;
     mapping(bytes => bool) public executed;
     mapping(address => bool) public sellerWhitelist;
     uint[] private productsIds;
@@ -73,6 +74,7 @@ contract CryptoAvisosV1 is Ownable {
         address tokenPaid; //Holds contract address or 0x00 if it"s native coin used in payment
         uint feeCharged; //Holds charged fee, in case admin need to refund and fee has changed between pay and refund time
         uint pricePaid; //Holds price paid at moment of payment (without fee)
+        uint shippingCost; //Holds shipping cost
     }
 
     enum Status {
@@ -195,6 +197,23 @@ contract CryptoAvisosV1 is Ownable {
         emit FeesClaimed(msg.sender, token, quantity);
     }
 
+    /// @notice Used for admin to claim shipping cost
+    /// @param token address of token to claim
+    /// @param quantity quantity to claim
+    function claimShippingCost(address token, uint quantity) external payable onlyOwner {
+        require(claimableShippingCost[token] >= quantity, "!funds");
+        claimableShippingCost[token] -= quantity;
+
+        if(token == address(0)){
+            //ETH
+            payable(msg.sender).transfer(quantity);
+        }else{
+            //ERC20
+            IERC20(token).transfer(msg.sender, quantity);
+        }
+        emit FeesClaimed(msg.sender, token, quantity);
+    }
+
     /// @notice Submit a product
     /// @dev Create a new product, revert if already exists
     /// @param productId ID of the product in CA DB
@@ -258,7 +277,7 @@ contract CryptoAvisosV1 is Ownable {
 
         //Create ticket
         uint ticketId = uint(keccak256(abi.encode(productId, msg.sender, block.number, product.stock)));
-        productTicketsMapping[ticketId] = Ticket(productId, Status.WAITING, payable(msg.sender), product.token, toFee, product.price);
+        productTicketsMapping[ticketId] = Ticket(productId, Status.WAITING, payable(msg.sender), product.token, toFee, product.price, shippingCost);
         ticketsIds.push(ticketId);
 
         product.stock -= 1;
@@ -287,6 +306,7 @@ contract CryptoAvisosV1 is Ownable {
         }
 
         claimableFee[product.token] += ticket.feeCharged;
+        claimableShippingCost[product.token] += ticket.shippingCost;
 
         ticket.status = Status.SOLD;
         productTicketsMapping[ticketId] = ticket;
@@ -319,12 +339,14 @@ contract CryptoAvisosV1 is Ownable {
         require(ticket.productId != 0, "!ticketId");
         require(Status.WAITING == ticket.status, "!waiting");
 
+        uint toRefund = ticket.pricePaid + ticket.shippingCost;
+
         if(ticket.tokenPaid == address(0)){
             //ETH
-            ticket.buyer.transfer(ticket.pricePaid);
+            ticket.buyer.transfer(toRefund);
         }else{
             //ERC20
-            IERC20(ticket.tokenPaid).transfer(ticket.buyer, ticket.pricePaid);
+            IERC20(ticket.tokenPaid).transfer(ticket.buyer, toRefund);
         }
         ticket.status = Status.SOLD;
         
