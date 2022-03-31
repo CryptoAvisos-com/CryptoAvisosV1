@@ -71,7 +71,7 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(seller).submitProduct(productId, ethers.constants.AddressZero, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!whitlisted");
         // Assert whitlisted user try to create a product for another seller address
         await this.cryptoAvisosV1.addWhitlistedSeller(productSeller);
-        await expect(this.cryptoAvisosV1.connect(seller).submitProduct(productId, otherSeller.address, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!sender");
+        await expect(this.cryptoAvisosV1.connect(seller).submitProduct(productId, otherSeller.address, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!whitlisted");
         await this.cryptoAvisosV1.removeWhitlistedSeller(productSeller);
 
         // Assert successfull creation
@@ -144,7 +144,7 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(otherSeller).updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!whitlisted");
         // Assert whitlisted user that tries to update a product of another seller address
         await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
-        await expect(this.cryptoAvisosV1.connect(otherSeller).updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!sender");
+        await expect(this.cryptoAvisosV1.connect(otherSeller).updateProduct(productId, productSeller, ethers.utils.parseUnits(productPrice, daiDecimals), productToken, stock)).to.be.revertedWith("!whitlisted");
         await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
 
         // Assert a valid product update as owner
@@ -174,7 +174,7 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(otherSeller).switchEnable(productArray[0], false)).to.be.revertedWith("!whitlisted");
         // Assert whitlisted user that tries to update a product of another seller address
         await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
-        await expect(this.cryptoAvisosV1.connect(otherSeller).switchEnable(productArray[0], false)).to.be.revertedWith("!sender");
+        await expect(this.cryptoAvisosV1.connect(otherSeller).switchEnable(productArray[0], false)).to.be.revertedWith("!whitlisted");
         await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
 
         //Disable product
@@ -415,7 +415,7 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(otherSeller).addStock(productToAdd, stockToAdd)).to.be.revertedWith("!whitlisted");
         // Assert whitlisted user that tries to update a product of another seller address
         await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
-        await expect(this.cryptoAvisosV1.connect(otherSeller).addStock(productToAdd, stockToAdd)).to.be.revertedWith("!sender");
+        await expect(this.cryptoAvisosV1.connect(otherSeller).addStock(productToAdd, stockToAdd)).to.be.revertedWith("!whitlisted");
         await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
 
         // Valid stock update
@@ -446,7 +446,7 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(otherSeller).removeStock(productToRemove, stockToRemove)).to.be.revertedWith("!whitlisted");
         // Assert whitlisted user that tries to update a product of another seller address
         await this.cryptoAvisosV1.addWhitlistedSeller(otherSeller.address);
-        await expect(this.cryptoAvisosV1.connect(otherSeller).removeStock(productToRemove, stockToRemove)).to.be.revertedWith("!sender");
+        await expect(this.cryptoAvisosV1.connect(otherSeller).removeStock(productToRemove, stockToRemove)).to.be.revertedWith("!whitlisted");
         await this.cryptoAvisosV1.removeWhitlistedSeller(otherSeller.address);
         
         await this.cryptoAvisosV1.removeStock(productToRemove, stockToRemove);
