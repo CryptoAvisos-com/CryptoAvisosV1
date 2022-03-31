@@ -14,7 +14,7 @@ contract CryptoAvisosV1 is Ownable {
     mapping(uint => Ticket) public productTicketsMapping; //uint(keccak256(productId, buyer, blockNumber, product.stock)) => Ticket
     mapping(address => uint) public claimableFee;
     mapping(bytes => bool) public executed;
-    mapping(address => bool) public sellerWhitlist;
+    mapping(address => bool) public sellerWhitelist;
     uint[] private productsIds;
     uint[] private ticketsIds;
 
@@ -36,8 +36,8 @@ contract CryptoAvisosV1 is Ownable {
     event PreparedFee(uint fee, uint unlockTime);
     event StockAdded(uint productId, uint stockAdded);
     event StockRemoved(uint productId, uint stockRemoved);
-    event SellerWhitlistAdded(address seller);
-    event SellerWhitlistRemoved(address seller);
+    event SellerWhitelistAdded(address seller);
+    event SellerWhitelistRemoved(address seller);
 
     constructor(uint newFee, address _allowedSigner){
         _setFee(newFee);
@@ -45,16 +45,16 @@ contract CryptoAvisosV1 is Ownable {
         allowedSigner = _allowedSigner;
     }
 
-    modifier onlyWhitlisted() {
-        require(owner() == msg.sender || sellerWhitlist[msg.sender], '!whitlisted');
+    modifier onlyWhitelisted() {
+        require(owner() == msg.sender || sellerWhitelist[msg.sender], '!whitelisted');
         _;
     }
 
-    modifier onlyOwnerOfProduct(uint productId) {
+    modifier onlyProductOwner(uint productId) {
         require(productId != 0, "!productId");
         Product memory product = productMapping[productId];
-        require(productMapping[productId].seller != address(0), "!exist");
-        require(owner() == msg.sender || (sellerWhitlist[msg.sender] && product.seller == msg.sender), "!whitlisted");
+        require(product.seller != address(0), "!exist");
+        require(owner() == msg.sender || (sellerWhitelist[msg.sender] && product.seller == msg.sender), "!whitelisted");
         _;
     }
 
@@ -202,13 +202,13 @@ contract CryptoAvisosV1 is Ownable {
     /// @param price price (with corresponding ERC20 decimals)
     /// @param token address of the token
     /// @param stock how much units of the product
-    function submitProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyWhitlisted {
+    function submitProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyWhitelisted {
         require(productId != 0, "!productId");
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
         require(stock != 0, "!stock");
         require(productMapping[productId].seller == address(0), "alreadyExist");
-        require(owner() == msg.sender || seller == msg.sender, "!whitlisted");
+        require(owner() == msg.sender || seller == msg.sender, "!whitelisted");
         Product memory product = Product(price, seller, token, true, stock);
         productMapping[productId] = product;
         productsIds.push(productId);
@@ -219,7 +219,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @dev Modifies value of `enabled` in Product Struct
     /// @param productId ID of the product in CA DB
     /// @param isEnabled value to set
-    function switchEnable(uint productId, bool isEnabled) external onlyOwnerOfProduct(productId) {
+    function switchEnable(uint productId, bool isEnabled) external onlyProductOwner(productId) {
         Product memory product = productMapping[productId];
         product.enabled = isEnabled;
         productMapping[productId] = product;
@@ -300,7 +300,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param price price (with corresponding ERC20 decimals)
     /// @param token address of the token
     /// @param stock how much units of the product
-    function updateProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyOwnerOfProduct(productId) {
+    function updateProduct(uint productId, address payable seller, uint price, address token, uint stock) external onlyProductOwner(productId) {
         //Update a product
         require(productId != 0, "!productId");
         require(price != 0, "!price");
@@ -335,7 +335,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Add units to stock in a specific product
     /// @param productId ID of the product in CA DB
     /// @param stockToAdd How many units add to stock
-    function addStock(uint productId, uint stockToAdd) external onlyOwnerOfProduct(productId) {
+    function addStock(uint productId, uint stockToAdd) external onlyProductOwner(productId) {
         //Add stock to a product
         Product memory product = productMapping[productId];
         require(stockToAdd != 0, "!stockToAdd");
@@ -347,7 +347,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Remove units to stock in a specific product
     /// @param productId ID of the product in CA DB
     /// @param stockToRemove How many units remove from stock
-    function removeStock(uint productId, uint stockToRemove) external onlyOwnerOfProduct(productId) {
+    function removeStock(uint productId, uint stockToRemove) external onlyProductOwner(productId) {
         //Add stock to a product
         Product memory product = productMapping[productId];
         require(product.stock >= stockToRemove, "!stockToRemove");
@@ -356,17 +356,17 @@ contract CryptoAvisosV1 is Ownable {
         emit StockRemoved(productId, stockToRemove);
     }
     
-    /// @notice Add a seller address to the whitlisted in order to manage their own products
+    /// @notice Add a seller address to the whitelisted in order to manage their own products
     /// @param seller Address of the seller
-    function addWhitlistedSeller(address seller) external onlyOwner {
-        sellerWhitlist[seller] = true;
-        emit SellerWhitlistAdded(seller);
+    function addWhitelistedSeller(address seller) external onlyOwner {
+        sellerWhitelist[seller] = true;
+        emit SellerWhitelistAdded(seller);
     }
 
-    /// @notice Remove a seller address to the whitlisted in order to manage their own products
+    /// @notice Remove a seller address to the whitelisted in order to manage their own products
     /// @param seller Address of the seller
-    function removeWhitlistedSeller(address seller) external onlyOwner {
-        sellerWhitlist[seller] = false;
-        emit SellerWhitlistRemoved(seller);
+    function removeWhitelistedSeller(address seller) external onlyOwner {
+        sellerWhitelist[seller] = false;
+        emit SellerWhitelistRemoved(seller);
     }
 }
