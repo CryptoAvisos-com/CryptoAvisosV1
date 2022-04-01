@@ -17,9 +17,18 @@ describe("CryptoAvisosV1", function () {
         this.DAI = await ethers.getContractFactory("DAI");
         this.dai = await this.DAI.deploy(ethers.utils.parseUnits("10000000", "ether"));
         await this.dai.deployed();
+        this.daiDecimals = await this.dai.decimals();
 
         //Transfer DAI to buyer
         await this.dai.transfer(buyer.address, ethers.utils.parseUnits("10000", "ether"));
+
+        this.getSignedMessage = async function(shippingCost, productId, buyerAddress, signer) {
+            let nonce = await this.cryptoAvisosV1.nonce();
+            let hashedMessage = ethers.utils.solidityKeccak256(["uint256", "address", "uint256", "uint256", "uint256"], [productId, buyerAddress, shippingCost, 31337, Number(nonce)]);
+            let hashedMessageArray = ethers.utils.arrayify(hashedMessage);
+            let signedMessage = await signer.signMessage(hashedMessageArray);
+            return signedMessage;
+        }
     });
 
     it("Fee should be equal to...", async function () {
@@ -99,7 +108,7 @@ describe("CryptoAvisosV1", function () {
     it("Should submit a product payable with ETH, succesfully...", async function () {
         //Submit product
         let productId = productArray[1];
-        let productPrice = "1.5";
+        let productPrice = "1";
         let productSeller = seller.address;
         let productToken = ethers.constants.AddressZero;
         let stock = 5;
@@ -191,22 +200,18 @@ describe("CryptoAvisosV1", function () {
     });
       
     it("Should pay a product with DAI, succesfully...", async function () {
-        let shippingCost = 10;
-        let nonce = await this.cryptoAvisosV1.nonce();
-        let hashedMessage = ethers.utils.solidityKeccak256(["uint256", "address", "uint256", "uint256", "uint256"], [productArray[0], buyer.address, shippingCost, 31337, Number(nonce)]);
-        let hashedMessageArray = ethers.utils.arrayify(hashedMessage);
-        let signedMessage = await allowedSigner.signMessage(hashedMessageArray);
+        let shippingCost = ethers.utils.parseUnits("10", this.daiDecimals);
+        let signedMessage = await this.getSignedMessage(shippingCost, productArray[0], buyer.address, allowedSigner);
 
         // Assert invalid signer
-        let wrongSignerMessage = await buyer.signMessage(hashedMessageArray);
+        let wrongSignerMessage = await this.getSignedMessage(shippingCost, productArray[0], buyer.address, buyer);
         await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0], shippingCost, wrongSignerMessage)).to.be.revertedWith("!allowedSigner");
 
         // Assert not valid product error
         await expect(this.cryptoAvisosV1.connect(buyer).payProduct(5656, shippingCost, signedMessage)).to.be.revertedWith("!exist");
 
         //Approve DAI
-        let daiDecimals = await this.dai.decimals();
-        await this.dai.connect(buyer).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits("10000", daiDecimals));
+        await this.dai.connect(buyer).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits("10000", this.daiDecimals));
 
         //DAI amount before
         let daiBalanceBuyerBefore = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
@@ -224,8 +229,8 @@ describe("CryptoAvisosV1", function () {
         let daiBalanceContractAfter = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
 
         let product = await this.cryptoAvisosV1.productMapping(productArray[0]);
-        expect(Number(daiBalanceBuyerAfter)).equal(Number(daiBalanceBuyerBefore) - Number(ethers.utils.formatUnits(product.price)));
-        expect(Number(daiBalanceContractAfter)).equal(Number(daiBalanceContractBefore) + Number(ethers.utils.formatUnits(product.price)));
+        expect(Number(daiBalanceBuyerAfter)).equal(Number(daiBalanceBuyerBefore) - Number(ethers.utils.formatUnits(product.price)) - Number(ethers.utils.formatUnits(shippingCost)));
+        expect(Number(daiBalanceContractAfter)).equal(Number(daiBalanceContractBefore) + Number(ethers.utils.formatUnits(product.price)) + Number(ethers.utils.formatUnits(shippingCost)));
         expect(Number(product.stock)).equal(Number(stockBefore) - 1);
 
         // Fee to claim after pay should be zero
@@ -240,18 +245,16 @@ describe("CryptoAvisosV1", function () {
         expect(ticketToRelease.buyer).eq(buyer.address);
         expect(ticketToRelease.tokenPaid).eq(this.dai.address);
         expect(Number(ticketToRelease.pricePaid)).equal(Number(productBefore.price));
-        expect(Number(ticketToRelease.feeCharged)).equal(Number(productBefore.price * fee / 100));
+        expect(Number(ticketToRelease.pricePaid)).equal(Number(productBefore.price));
+        expect(Number(ticketToRelease.shippingCost)).equal(Number(shippingCost));
 
         // Assert duplicated signed message validation
         await expect(this.cryptoAvisosV1.connect(buyer).payProduct(productArray[0], shippingCost, signedMessage)).to.be.revertedWith("!signedMessage");
     });
 
     it("Should pay a product with ETH, succesfully...", async function () {
-        let shippingCost = 1000000;
-        let nonce = await this.cryptoAvisosV1.nonce();
-        let hashedMessage = ethers.utils.solidityKeccak256(["uint256", "address", "uint256", "uint256", "uint256"], [productArray[1], buyer.address, shippingCost, 31337, Number(nonce)]);
-        let hashedMessageArray = ethers.utils.arrayify(hashedMessage);
-        let signedMessage = await allowedSigner.signMessage(hashedMessageArray);
+        let shippingCost = ethers.utils.parseUnits("0.5", "ether");
+        let signedMessage = await this.getSignedMessage(shippingCost, productArray[1], buyer.address, allowedSigner);
 
         //ETH amount before
         let ethBalanceBuyerBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(buyer.address));
@@ -290,6 +293,7 @@ describe("CryptoAvisosV1", function () {
         expect(ticketToRelease.tokenPaid).equal(ethers.constants.AddressZero);
         expect(Number(ticketToRelease.pricePaid)).equal(Number(productBefore.price));
         expect(Number(ticketToRelease.feeCharged)).equal(Number(productBefore.price * fee / 100));
+        expect(Number(ticketToRelease.shippingCost)).equal(Number(shippingCost));
     });
 
     it("Should release DAI from product pay...", async function () {
@@ -316,6 +320,9 @@ describe("CryptoAvisosV1", function () {
         // Fee to claim added after release (can't be refunded)
         let claimableFee = await this.cryptoAvisosV1.claimableFee(ticket.tokenPaid);
         expect(Number(claimableFee)).equal(Number(ticket.pricePaid * fee / 100));
+        // Shipping Cost to claim added after release (can't be refunded)
+        let claimableShippingCost = await this.cryptoAvisosV1.claimableShippingCost(ticket.tokenPaid);
+        expect(Number(claimableShippingCost)).equal(Number(ticket.shippingCost));
     });
 
     it("Should release ETH from product pay...", async function () {
@@ -340,14 +347,20 @@ describe("CryptoAvisosV1", function () {
         // Fee to claim added after release (can't be refunded)
         let claimableFee = await this.cryptoAvisosV1.claimableFee(ticket.tokenPaid);
         expect(Number(claimableFee)).equal(Number(ticket.pricePaid * fee / 100));
+        // Shipping Cost to claim added after release (can't be refunded)
+        let claimableShippingCost = await this.cryptoAvisosV1.claimableShippingCost(ticket.tokenPaid);
+        expect(Number(claimableShippingCost)).equal(Number(ticket.shippingCost));
     });
 
     it("Should refund a product in DAI...", async function () {
+        let shippingCost = ethers.utils.parseUnits("10", this.daiDecimals);
+        let signedMessage = await this.getSignedMessage(shippingCost, productArray[2], buyer.address, allowedSigner);
+
         let productId = productArray[2];
         let productToken = this.dai.address;
 
         let balanceDaiBefore = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
-        await this.cryptoAvisosV1.connect(buyer).payProduct(productId);
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productId, shippingCost, signedMessage);
         let balanceDaiFeesBefore = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(productToken));
 
         await expect(this.cryptoAvisosV1.refundProduct(0)).to.be.revertedWith("!ticketId");
@@ -371,13 +384,16 @@ describe("CryptoAvisosV1", function () {
 
     it("Should refund a product in ETH...", async function () {
         let productId = productArray[3];
-        let productPrice = "1.5";
+        let productPrice = "1";
+
+        let shippingCost = ethers.utils.parseUnits("0.5", "ether");
+        let signedMessage = await this.getSignedMessage(shippingCost, productId, buyer.address, allowedSigner);
 
         let balanceEthBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(buyer.address));
-        await this.cryptoAvisosV1.connect(buyer).payProduct(productId, { value: ethers.utils.parseUnits(productPrice) });
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productId, shippingCost, signedMessage, { value: ethers.utils.parseUnits(productPrice).add(shippingCost) });
         let balanceEthFeesBefore = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(ethers.constants.AddressZero));
 
-        let ticketProduct3 = await this.cryptoAvisosV1.getTicketsIdsByProduct(productArray[3]);
+        let ticketProduct3 = await this.cryptoAvisosV1.getTicketsIdsByProduct(productId);
         await this.cryptoAvisosV1.refundProduct(ticketProduct3[0]);
 
         let balanceEthAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(buyer.address));
@@ -500,20 +516,24 @@ describe("CryptoAvisosV1", function () {
     });
       
     it("Should claim all available fees in DAI and be able to refund a waiting product successfully...", async function () {
+
         let balanceToClaim = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableFee(this.dai.address));
         // Balance to claim is ZERO
         expect(Number(balanceToClaim)).equal(Number(0));
 
         //Approve DAI
-        let daiDecimals = await this.dai.decimals();
-        await this.dai.connect(buyer).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits("10000", daiDecimals));
+        await this.dai.connect(buyer).approve(this.cryptoAvisosV1.address, ethers.utils.parseUnits("10000", this.daiDecimals));
 
         let daiBalanceBuyerBeforePayment = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
         let daiBalanceContractBeforePayment = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
 
         // Pay 2 products in DAI
-        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[2]);
-        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[5]);
+        let shippingCost = ethers.utils.parseUnits("10", this.daiDecimals);
+        let signedMessage = await this.getSignedMessage(shippingCost, productArray[2], buyer.address, allowedSigner);
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[2], shippingCost, signedMessage);
+        let shippingCost2 = ethers.utils.parseUnits("20", this.daiDecimals);
+        let signedMessage2 = await this.getSignedMessage(shippingCost2, productArray[5], buyer.address, allowedSigner);
+        await this.cryptoAvisosV1.connect(buyer).payProduct(productArray[5], shippingCost2, signedMessage2);
 
         let daiBalanceBuyerAfterPayment = ethers.utils.formatUnits(await this.dai.balanceOf(buyer.address));
         let daiBalanceContractAfterPayment = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
@@ -521,8 +541,8 @@ describe("CryptoAvisosV1", function () {
         // Assert balances after payments
         let product2 = await this.cryptoAvisosV1.productMapping(productArray[2]);
         let product5 = await this.cryptoAvisosV1.productMapping(productArray[5]);
-        expect(Number(daiBalanceBuyerAfterPayment)).equal(Number(daiBalanceBuyerBeforePayment) - Number(ethers.utils.formatUnits(product2.price)) - Number(ethers.utils.formatUnits(product5.price)));
-        expect(Number(daiBalanceContractAfterPayment)).equal(Number(daiBalanceContractBeforePayment) + Number(ethers.utils.formatUnits(product2.price)) + Number(ethers.utils.formatUnits(product5.price)));
+        expect(Number(daiBalanceBuyerAfterPayment)).equal(Number(daiBalanceBuyerBeforePayment) - Number(ethers.utils.formatUnits(product2.price)) - Number(ethers.utils.formatUnits(product5.price)) - Number(ethers.utils.formatUnits(shippingCost)) - Number(ethers.utils.formatUnits(shippingCost2)));
+        expect(Number(daiBalanceContractAfterPayment)).equal(Number(daiBalanceContractBeforePayment) + Number(ethers.utils.formatUnits(product2.price)) + Number(ethers.utils.formatUnits(product5.price)) + Number(ethers.utils.formatUnits(shippingCost)) + Number(ethers.utils.formatUnits(shippingCost2)));
 
         let daiBalanceSellerBeforeRelease = ethers.utils.formatUnits(await this.dai.balanceOf(seller.address));
         let daiBalanceContractBeforeRelease = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
@@ -564,8 +584,8 @@ describe("CryptoAvisosV1", function () {
         let daiBalanceContractAfterRefund = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
 
         // Assert balances after claim fees of released tickets
-        expect(Number(daiBalanceBuyerAfterRefund)).equal(Number(daiBalanceBuyerBeforeRefund) + Number(ethers.utils.formatUnits(product5.price)));
-        expect(Number(daiBalanceContractAfterRefund)).equal(Number(daiBalanceContractBeforeRefund) - Number(ethers.utils.formatUnits(product5.price)));
+        expect(Number(daiBalanceBuyerAfterRefund)).equal(Number(daiBalanceBuyerBeforeRefund) + Number(ethers.utils.formatUnits(product5.price)) + Number(ethers.utils.formatUnits(shippingCost2)));
+        expect(Number(daiBalanceContractAfterRefund)).equal(Number(daiBalanceContractBeforeRefund) - Number(ethers.utils.formatUnits(product5.price)) - Number(ethers.utils.formatUnits(shippingCost2)));
 
     });
 
