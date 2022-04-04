@@ -52,10 +52,14 @@ contract CryptoAvisosV1 is Ownable {
     }
 
     modifier onlyProductOwner(uint productId) {
-        require(productId != 0, "!productId");
-        Product memory product = productMapping[productId];
-        require(product.seller != address(0), "!exist");
-        require(owner() == msg.sender || (sellerWhitelist[msg.sender] && product.seller == msg.sender), "!whitelisted");
+        _checkOwnership(productId);
+        _;
+    }
+
+    modifier onlyProductOwnerBatch(uint[] memory productsId) {
+        for (uint256 i = 0; i < productsId.length; i++) {
+            _checkOwnership(productsId[i]);
+        }
         _;
     }
 
@@ -145,12 +149,79 @@ contract CryptoAvisosV1 is Ownable {
         return _ticketsIds;
     }
 
+    function _checkOwnership(uint productId) internal view {
+        require(productId != 0, "!productId");
+        Product memory product = productMapping[productId];
+        require(product.seller != address(0), "!exist");
+        require(owner() == msg.sender || (sellerWhitelist[msg.sender] && product.seller == msg.sender), "!whitelisted");
+    }
+
     function _setFee(uint newFee) internal {
         //Set fee. Example: 10e18 = 10%
         require(newFee <= 100e18, "!fee");
         uint previousFee = fee;
         fee = newFee;
         emit FeeSetted(previousFee, newFee);
+    }
+
+    function _submitProduct(uint productId, address payable seller, uint price, address token, uint16 stock) internal {
+        require(productId != 0, "!productId");
+        require(price != 0, "!price");
+        require(seller != address(0), "!seller");
+        require(stock != 0, "!stock");
+        require(productMapping[productId].seller == address(0), "alreadyExist");
+        require(owner() == msg.sender || seller == msg.sender, "!whitelisted");
+        Product memory product = Product(price, seller, token, true, stock);
+        productMapping[productId] = product;
+        productsIds.push(productId);
+        emit ProductSubmitted(productId);
+    }
+
+    function _updateProduct(uint productId, address payable seller, uint price, address token, uint16 stock) internal {
+        require(price != 0, "!price");
+        require(seller != address(0), "!seller");
+        Product memory product = productMapping[productId];
+        product = Product(price, seller, token, true, stock);
+        productMapping[productId] = product;
+        emit ProductUpdated(productId);
+    }
+
+    function _addStock(uint productId, uint16 stockToAdd) internal {
+        Product memory product = productMapping[productId];
+        require(stockToAdd != 0, "!stockToAdd");
+        product.stock += stockToAdd;
+        productMapping[productId] = product;
+        emit StockAdded(productId, stockToAdd);
+    }
+
+    function _removeStock(uint productId, uint16 stockToRemove) internal {
+        Product memory product = productMapping[productId];
+        require(product.stock >= stockToRemove, "!stockToRemove");
+        product.stock -= stockToRemove;
+        productMapping[productId] = product;
+        emit StockRemoved(productId, stockToRemove);
+    }
+
+    function _switchEnable(uint productId, bool isEnabled) internal {
+        Product memory product = productMapping[productId];
+        product.enabled = isEnabled;
+        productMapping[productId] = product;
+        emit SwitchChanged(productId, isEnabled);
+    }
+
+    function _checkArrayLength(uint[] memory productsId, address[] memory sellers, uint[] memory prices, address[] memory tokens, uint16[] memory stocks) internal pure {
+        // checks if arrays have same length
+        uint length = productsId.length;
+        require(length == sellers.length, "!sellers");
+        require(length == prices.length, "!prices");
+        require(length == tokens.length, "!tokens");
+        require(length == stocks.length, "!stocks");
+    }
+
+    function _checkArrayLength(uint[] memory productsId, uint16[] memory stocks) internal pure {
+        // checks if arrays have same length
+        uint length = productsId.length;
+        require(length == stocks.length, "!stocks");
     }
 
     function getHash(
@@ -223,16 +294,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param token address of the token
     /// @param stock how much units of the product
     function submitProduct(uint productId, address payable seller, uint price, address token, uint16 stock) external onlyWhitelisted {
-        require(productId != 0, "!productId");
-        require(price != 0, "!price");
-        require(seller != address(0), "!seller");
-        require(stock != 0, "!stock");
-        require(productMapping[productId].seller == address(0), "alreadyExist");
-        require(owner() == msg.sender || seller == msg.sender, "!whitelisted");
-        Product memory product = Product(price, seller, token, true, stock);
-        productMapping[productId] = product;
-        productsIds.push(productId);
-        emit ProductSubmitted(productId);
+        _submitProduct(productId, seller, price, token, stock);
     }
 
     /// @notice This function enable or disable a product
@@ -240,10 +302,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param productId ID of the product in CA DB
     /// @param isEnabled value to set
     function switchEnable(uint productId, bool isEnabled) external onlyProductOwner(productId) {
-        Product memory product = productMapping[productId];
-        product.enabled = isEnabled;
-        productMapping[productId] = product;
-        emit SwitchChanged(productId, isEnabled);
+        _switchEnable(productId, isEnabled);
     }
 
     /// @notice Public function to pay a product
@@ -315,7 +374,7 @@ contract CryptoAvisosV1 is Ownable {
     }
 
     /// @notice Used by admin to update values of a product
-    /// @dev `productId` needs to be loaded in contract
+    /// @dev `productId` needs to be already in contract
     /// @param productId ID of the product in CA DB
     /// @param seller seller address of the product
     /// @param price price (with corresponding ERC20 decimals)
@@ -323,12 +382,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param stock how much units of the product
     function updateProduct(uint productId, address payable seller, uint price, address token, uint16 stock) external onlyProductOwner(productId) {
         //Update a product
-        require(price != 0, "!price");
-        require(seller != address(0), "!seller");
-        Product memory product = productMapping[productId];
-        product = Product(price, seller, token, true, stock);
-        productMapping[productId] = product;
-        emit ProductUpdated(productId);
+        _updateProduct(productId, seller, price, token, stock);
     }
 
     /// @notice Refunds pay (sends money, without fee, to the buyer)
@@ -359,11 +413,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param stockToAdd How many units add to stock
     function addStock(uint productId, uint16 stockToAdd) external onlyProductOwner(productId) {
         //Add stock to a product
-        Product memory product = productMapping[productId];
-        require(stockToAdd != 0, "!stockToAdd");
-        product.stock += stockToAdd;
-        productMapping[productId] = product;
-        emit StockAdded(productId, stockToAdd);
+        _addStock(productId, stockToAdd);
     }
 
     /// @notice Remove units to stock in a specific product
@@ -371,11 +421,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param stockToRemove How many units remove from stock
     function removeStock(uint productId, uint16 stockToRemove) external onlyProductOwner(productId) {
         //Add stock to a product
-        Product memory product = productMapping[productId];
-        require(product.stock >= stockToRemove, "!stockToRemove");
-        product.stock -= stockToRemove;
-        productMapping[productId] = product;
-        emit StockRemoved(productId, stockToRemove);
+        _removeStock(productId, stockToRemove);
     }
     
     /// @notice Add a seller address to the whitelisted in order to manage their own products
@@ -391,4 +437,63 @@ contract CryptoAvisosV1 is Ownable {
         sellerWhitelist[seller] = false;
         emit SellerWhitelistRemoved(seller);
     }
+
+    /// @notice Submit products in batch
+    /// @dev Create a new product in loop, revert if already exists.
+    /// @param productsId ID of the product in CA DB
+    /// @param sellers seller address of the product
+    /// @param prices price (with corresponding ERC20 decimals)
+    /// @param tokens address of the token
+    /// @param stocks how much units of the product
+    function batchSubmitProduct(uint[] memory productsId, address[] memory sellers, uint[] memory prices, address[] memory tokens, uint16[] memory stocks) external onlyWhitelisted {
+        _checkArrayLength(productsId, sellers, prices, tokens, stocks);
+        for (uint256 i = 0; i < productsId.length; i++) {
+            _submitProduct(productsId[i], payable(sellers[i]), prices[i], tokens[i], stocks[i]);
+        }
+    }
+
+    /// @notice Used by admin to update values of a product, in batch
+    /// @dev `productId` needs to be already in contract
+    /// @param productsId ID of the product in CA DB
+    /// @param sellers seller address of the product
+    /// @param prices price (with corresponding ERC20 decimals)
+    /// @param tokens address of the token
+    /// @param stocks how much units of the product
+    function batchUpdateProduct(uint[] memory productsId, address[] memory sellers, uint[] memory prices, address[] memory tokens, uint16[] memory stocks) external onlyProductOwnerBatch(productsId) {
+        _checkArrayLength(productsId, sellers, prices, tokens, stocks);
+        for (uint256 i = 0; i < productsId.length; i++) {
+            _updateProduct(productsId[i], payable(sellers[i]), prices[i], tokens[i], stocks[i]);
+        }
+    }
+
+    /// @notice Add units to stock in a specific product, in batch
+    /// @param productsId ID of the product in CA DB
+    /// @param stockToAdd How many units add to stock
+    function batchAddStock(uint[] memory productsId, uint16[] memory stockToAdd) external onlyProductOwnerBatch(productsId) {
+        _checkArrayLength(productsId, stockToAdd);
+        for (uint256 i = 0; i < productsId.length; i++) {
+            _addStock(productsId[i], stockToAdd[i]);
+        }
+    }
+
+    /// @notice Remove units to stock in a specific product, in batch
+    /// @param productsId ID of the product in CA DB
+    /// @param stockToRemove How many units remove from stock
+    function batchRemoveStock(uint[] memory productsId, uint16[] memory stockToRemove) external onlyProductOwnerBatch(productsId) {
+        _checkArrayLength(productsId, stockToRemove);
+        for (uint256 i = 0; i < productsId.length; i++) {
+            _removeStock(productsId[i], stockToRemove[i]);
+        }
+    }
+
+    /// @notice This function enable or disable a product, in batch
+    /// @dev Modifies value of `enabled` in Product Struct
+    /// @param productsId ID of the product in CA DB
+    /// @param isEnabled value to set
+    function batchSwitchEnable(uint[] memory productsId, bool isEnabled) external onlyProductOwnerBatch(productsId) {
+        for (uint256 i = 0; i < productsId.length; i++) {
+            _switchEnable(productsId[i], isEnabled);
+        }
+    }
+
 }
