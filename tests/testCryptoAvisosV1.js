@@ -379,7 +379,7 @@ describe("CryptoAvisosV1", function () {
         expect(Number(balanceDaiFeesBefore)).greaterThanOrEqual(Number(balanceDaiFeesAfter));
 
         let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketProduct2[0]);
-        expect(ticket.status).equal(1); // SOLD
+        expect(ticket.status).equal(2); // REFUNDED
     });
 
     it("Should refund a product in ETH...", async function () {
@@ -403,7 +403,7 @@ describe("CryptoAvisosV1", function () {
         expect(Number(balanceEthFeesBefore)).greaterThanOrEqual(Number(balanceEthFeesAfter));
 
         let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketProduct3[0]);
-        expect(ticket.status).equal(1); // SOLD
+        expect(ticket.status).equal(2); // REFUNDED
     });
 
     it("Should claim fees in DAI, succesfully...", async function () {

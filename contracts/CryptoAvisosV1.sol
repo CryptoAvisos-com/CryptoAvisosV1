@@ -79,7 +79,8 @@ contract CryptoAvisosV1 is Ownable {
 
     enum Status {
         WAITING,
-        SOLD
+        SOLD,
+        REFUNDED
     }
 
     /// @notice Get all productIds loaded in the contract
@@ -347,7 +348,7 @@ contract CryptoAvisosV1 is Ownable {
             //ERC20
             IERC20(ticket.tokenPaid).transfer(ticket.buyer, toRefund);
         }
-        ticket.status = Status.SOLD;
+        ticket.status = Status.REFUNDED;
         
         productTicketsMapping[ticketId] = ticket;
         emit ProductRefunded(ticket.productId, ticketId);
