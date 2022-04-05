@@ -2,7 +2,8 @@ const hre = require("hardhat");
 const {
     CryptoAvisosEthereumMultiSig,
     CryptoAvisosBSCMultiSig,
-    CryptoAvisosPolygonMultiSig
+    CryptoAvisosPolygonMultiSig,
+    allowedSigner
 } = require("../registry.json");
 
 async function main() {
@@ -12,7 +13,7 @@ async function main() {
     //Deploy CAV1
     let initialFee = 0;
     const CryptoAvisosV1 = await hre.ethers.getContractFactory("CryptoAvisosV1");
-    const cryptoAvisosV1 = await CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(initialFee)));
+    const cryptoAvisosV1 = await CryptoAvisosV1.deploy(ethers.utils.parseUnits(String(initialFee)), allowedSigner);
 
     console.log("Waiting to confirm");
     await cryptoAvisosV1.deployTransaction.wait(2);
