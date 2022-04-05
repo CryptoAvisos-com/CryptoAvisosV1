@@ -7,7 +7,7 @@ describe("CryptoAvisosV1", function () {
     let fee = 10;
 
     before(async function () {
-        [deployer, seller, buyer, allowedSigner, otherSeller] = await ethers.getSigners();
+        [deployer, seller, buyer, allowedSigner, otherSeller, otherSeller2] = await ethers.getSigners();
 
         //Deploy CAV1
         this.CryptoAvisosV1 = await ethers.getContractFactory("CryptoAvisosV1");
@@ -617,10 +617,60 @@ describe("CryptoAvisosV1", function () {
         //Asert correct behavior
         await this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, sellers, prices, tokens, stocks);
         await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
+        
+        let productsToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+        productsToAssert.forEach(function (product, i) {
+            expect(Number(product.price)).equal(Number(prices[i]));
+            expect(product.seller).equal(sellers[i]);
+            expect(product.token).equal(tokens[i]);
+            expect(product.stock).equal(stocks[i]);    
+        });
     });
 
     it("Should update 5 products in batch...", async function () {
-        
+        //Correct arrays
+        let products = await this.cryptoAvisosV1.getProductsIds();
+        let productsId = [products[0], products[1], products[2], products[3], products[4]];
+        let sellers = [otherSeller.address, otherSeller2.address, otherSeller.address, otherSeller2.address, otherSeller.address];
+        let prices = [900, 800, 700, 600, 500];
+        let tokens = [this.dai.address, this.dai.address, this.dai.address, this.dai.address, ethers.constants.AddressZero];
+        let stocks = [9, 8, 7, 6, 5];
+
+        //Wrong arrays
+        let wrongSellers = [seller.address, seller.address, seller.address, seller.address, seller.address, seller.address];
+        let wrongPrices = [100, 100, 100, 200, 300, 100];
+        let wrongTokens = [this.dai.address, this.dai.address, this.dai.address, this.dai.address, ethers.constants.AddressZero, this.dai.address];
+        let wrongStocks = [3, 3, 3, 3, 3, 3];
+
+        //Assert not whitelisted
+        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, tokens, stocks)).to.be.revertedWith("!whitelisted");
+
+        //Assert arrays not the same length
+        await this.cryptoAvisosV1.addWhitelistedSeller(seller.address);
+        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, wrongSellers, prices, tokens, stocks)).to.be.revertedWith("!sellers");
+        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, wrongPrices, tokens, stocks)).to.be.revertedWith("!prices");
+        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, wrongTokens, stocks)).to.be.revertedWith("!tokens");
+        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, tokens, wrongStocks)).to.be.revertedWith("!stocks");
+
+        //Asert correct behavior
+        await this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, tokens, stocks);
+        await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
+
+        let productsToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+        productsToAssert.forEach(function (product, i) {
+            expect(Number(product.price)).equal(Number(prices[i]));
+            expect(product.seller).equal(sellers[i]);
+            expect(product.token).equal(tokens[i]);
+            expect(product.stock).equal(stocks[i]);    
+        });
     });
 
     it("Should add stock to 5 products in batch...", async function () {
@@ -639,8 +689,25 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(seller).batchAddStock(productsId, wrongStocks)).to.be.revertedWith("!stocks");
 
         //Asert correct behavior
+        let productsBeforeToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+
         await this.cryptoAvisosV1.connect(seller).batchAddStock(productsId, stocks);
         await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
+
+        let productsToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+
+        productsToAssert.forEach(function (product, i) {
+            expect(product.stock).equal(productsBeforeToAssert[i].stock + stocks[i]);    
+        });
+
     });
 
     it("Should remove stock to 5 products in batch...", async function () {
@@ -659,8 +726,23 @@ describe("CryptoAvisosV1", function () {
         await expect(this.cryptoAvisosV1.connect(seller).batchRemoveStock(productsId, wrongStocks)).to.be.revertedWith("!stocks");
 
         //Asert correct behavior
+        let productsBeforeToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+
         await this.cryptoAvisosV1.connect(seller).batchRemoveStock(productsId, stocks);
         await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
+
+        let productsToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+        productsToAssert.forEach(function (product, i) {
+            expect(product.stock).equal(productsBeforeToAssert[i].stock - stocks[i]);    
+        });
     });
 
     it("Should enable or disable 5 products in batch...", async function () {
@@ -676,6 +758,15 @@ describe("CryptoAvisosV1", function () {
         await this.cryptoAvisosV1.connect(seller).batchSwitchEnable(productsId, true);
         await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
 
+        let productsToAssertEnabled = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+        productsToAssertEnabled.forEach(function (product, i) {
+            expect(product.enabled).equal(true);
+        });
+    
         //Disable products
 
         //Assert not whitelisted
@@ -686,6 +777,14 @@ describe("CryptoAvisosV1", function () {
         await this.cryptoAvisosV1.connect(seller).batchSwitchEnable(productsId, false);
         await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
 
+        let productsToAssertDisabled = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
+            await this.cryptoAvisosV1.productMapping(productsId[1]),
+            await this.cryptoAvisosV1.productMapping(productsId[2]),
+            await this.cryptoAvisosV1.productMapping(productsId[3]),
+            await this.cryptoAvisosV1.productMapping(productsId[4])];
+        productsToAssertDisabled.forEach(function (product, i) {
+            expect(product.enabled).equal(false);
+        });
     });
 
 });
