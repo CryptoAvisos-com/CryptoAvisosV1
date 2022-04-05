@@ -339,8 +339,8 @@ describe("CryptoAvisosV1", function () {
         let ethBalanceContractAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
 
         let product = await this.cryptoAvisosV1.productMapping(productArray[1]);
-        expect(Number(ethBalanceSellerAfter)).equal(Number(ethBalanceSellerBefore) + Number(ethers.utils.formatUnits(product.price)) - (fee * Number(ethers.utils.formatUnits(product.price)) / 100));
-        expect(Number(ethBalanceContractAfter)).equal(Number(ethBalanceContractBefore) - Number(ethers.utils.formatUnits(product.price)) + (fee * Number(ethers.utils.formatUnits(product.price)) / 100));
+        expect(Number(ethBalanceSellerAfter)).to.be.closeTo(Number(ethBalanceSellerBefore) + Number(ethers.utils.formatUnits(product.price)) - (fee * Number(ethers.utils.formatUnits(product.price)) / 100), 0.0000001);
+        expect(Number(ethBalanceContractAfter)).to.be.closeTo(Number(ethBalanceContractBefore) - Number(ethers.utils.formatUnits(product.price)) + (fee * Number(ethers.utils.formatUnits(product.price)) / 100) , 0.0000001);
 
         let ticket = await this.cryptoAvisosV1.productTicketsMapping(ticketToRelease[0]);
         expect(ticket.status).equal(1); // SOLD

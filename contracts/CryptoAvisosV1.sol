@@ -171,8 +171,7 @@ contract CryptoAvisosV1 is Ownable {
         require(stock != 0, "!stock");
         require(productMapping[productId].seller == address(0), "alreadyExist");
         require(owner() == msg.sender || seller == msg.sender, "!whitelisted");
-        Product memory product = Product(price, seller, token, true, stock);
-        productMapping[productId] = product;
+        productMapping[productId] = Product(price, seller, token, true, stock);
         productsIds.push(productId);
         emit ProductSubmitted(productId);
     }
@@ -180,9 +179,7 @@ contract CryptoAvisosV1 is Ownable {
     function _updateProduct(uint productId, address payable seller, uint price, address token, uint16 stock) internal {
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
-        Product memory product = productMapping[productId];
-        product = Product(price, seller, token, true, stock);
-        productMapping[productId] = product;
+        productMapping[productId] = Product(price, seller, token, true, stock);
         emit ProductUpdated(productId);
     }
 
