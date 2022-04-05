@@ -625,29 +625,23 @@ describe("CryptoAvisosV1", function () {
     it("Should submit 5 products in batch...", async function () {
         //Correct arrays
         let productsId = productsForBatch;
-        let sellers = [seller.address, seller.address, seller.address, seller.address, seller.address];
-        let prices = [100, 100, 100, 200, 300];
-        let tokens = [this.dai.address, this.dai.address, this.dai.address, this.dai.address, ethers.constants.AddressZero];
-        let stocks = [3, 3, 3, 3, 3];
-
-        //Wrong arrays
-        let wrongSellers = [seller.address, seller.address, seller.address, seller.address, seller.address, seller.address];
-        let wrongPrices = [100, 100, 100, 200, 300, 100];
-        let wrongTokens = [this.dai.address, this.dai.address, this.dai.address, this.dai.address, ethers.constants.AddressZero, this.dai.address];
-        let wrongStocks = [3, 3, 3, 3, 3, 3];
+        let products = [
+            [100, seller.address, this.dai.address, true, 10],
+            [200, seller.address, ethers.constants.AddressZero, true, 20],
+            [300, seller.address, this.dai.address, true, 30],
+            [400, seller.address, ethers.constants.AddressZero, true, 40],
+            [500, seller.address, this.dai.address, true, 50],
+        ]
 
         //Assert not whitelisted
-        await expect(this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, sellers, prices, tokens, stocks)).to.be.revertedWith("!whitelisted");
+        await expect(this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, products)).to.be.revertedWith("!whitelisted");
 
         //Assert arrays not the same length
         await this.cryptoAvisosV1.addWhitelistedSeller(seller.address);
-        await expect(this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, wrongSellers, prices, tokens, stocks)).to.be.revertedWith("!sellers");
-        await expect(this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, sellers, wrongPrices, tokens, stocks)).to.be.revertedWith("!prices");
-        await expect(this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, sellers, prices, wrongTokens, stocks)).to.be.revertedWith("!tokens");
-        await expect(this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, sellers, prices, tokens, wrongStocks)).to.be.revertedWith("!stocks");
+        await expect(this.cryptoAvisosV1.connect(seller).batchSubmitProduct([productsId[0]], products)).to.be.revertedWith("!productsId");
 
         //Asert correct behavior
-        await this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, sellers, prices, tokens, stocks);
+        await this.cryptoAvisosV1.connect(seller).batchSubmitProduct(productsId, products);
         await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
         
         let productsToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
@@ -656,40 +650,34 @@ describe("CryptoAvisosV1", function () {
             await this.cryptoAvisosV1.productMapping(productsId[3]),
             await this.cryptoAvisosV1.productMapping(productsId[4])];
         productsToAssert.forEach(function (product, i) {
-            expect(Number(product.price)).equal(Number(prices[i]));
-            expect(product.seller).equal(sellers[i]);
-            expect(product.token).equal(tokens[i]);
-            expect(product.stock).equal(stocks[i]);    
+            expect(Number(product.price)).equal(Number(products[i][0]));
+            expect(product.seller).equal(products[i][1]);
+            expect(product.token).equal(products[i][2]);
+            expect(product.stock).equal(products[i][4]);    
         });
     });
 
     it("Should update 5 products in batch...", async function () {
         //Correct arrays
-        let products = await this.cryptoAvisosV1.getProductsIds();
-        let productsId = [products[0], products[1], products[2], products[3], products[4]];
-        let sellers = [otherSeller.address, otherSeller2.address, otherSeller.address, otherSeller2.address, otherSeller.address];
-        let prices = [900, 800, 700, 600, 500];
-        let tokens = [this.dai.address, this.dai.address, this.dai.address, this.dai.address, ethers.constants.AddressZero];
-        let stocks = [9, 8, 7, 6, 5];
-
-        //Wrong arrays
-        let wrongSellers = [seller.address, seller.address, seller.address, seller.address, seller.address, seller.address];
-        let wrongPrices = [100, 100, 100, 200, 300, 100];
-        let wrongTokens = [this.dai.address, this.dai.address, this.dai.address, this.dai.address, ethers.constants.AddressZero, this.dai.address];
-        let wrongStocks = [3, 3, 3, 3, 3, 3];
+        let currentProducts = await this.cryptoAvisosV1.getProductsIds();
+        let productsId = [currentProducts[0], currentProducts[1], currentProducts[2], currentProducts[3], currentProducts[4]];
+        let products = [
+            [500, otherSeller.address, ethers.constants.AddressZero, true, 60],
+            [600, otherSeller2.address, this.dai.address, true, 80],
+            [800, otherSeller.address, ethers.constants.AddressZero, true, 90],
+            [900, otherSeller2.address, this.dai.address, true, 100],
+            [1000, otherSeller.address, ethers.constants.AddressZero, true, 110],
+        ]
 
         //Assert not whitelisted
-        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, tokens, stocks)).to.be.revertedWith("!whitelisted");
+        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, products)).to.be.revertedWith("!whitelisted");
 
         //Assert arrays not the same length
         await this.cryptoAvisosV1.addWhitelistedSeller(seller.address);
-        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, wrongSellers, prices, tokens, stocks)).to.be.revertedWith("!sellers");
-        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, wrongPrices, tokens, stocks)).to.be.revertedWith("!prices");
-        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, wrongTokens, stocks)).to.be.revertedWith("!tokens");
-        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, tokens, wrongStocks)).to.be.revertedWith("!stocks");
+        await expect(this.cryptoAvisosV1.connect(seller).batchUpdateProduct([productsId[0]], products)).to.be.revertedWith("!productsId");
 
         //Asert correct behavior
-        await this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, sellers, prices, tokens, stocks);
+        await this.cryptoAvisosV1.connect(seller).batchUpdateProduct(productsId, products);
         await this.cryptoAvisosV1.removeWhitelistedSeller(seller.address);
 
         let productsToAssert = [await this.cryptoAvisosV1.productMapping(productsId[0]), 
@@ -698,10 +686,10 @@ describe("CryptoAvisosV1", function () {
             await this.cryptoAvisosV1.productMapping(productsId[3]),
             await this.cryptoAvisosV1.productMapping(productsId[4])];
         productsToAssert.forEach(function (product, i) {
-            expect(Number(product.price)).equal(Number(prices[i]));
-            expect(product.seller).equal(sellers[i]);
-            expect(product.token).equal(tokens[i]);
-            expect(product.stock).equal(stocks[i]);    
+            expect(Number(product.price)).equal(Number(products[i][0]));
+            expect(product.seller).equal(products[i][1]);
+            expect(product.token).equal(products[i][2]);
+            expect(product.stock).equal(products[i][4]);    
         });
     });
 

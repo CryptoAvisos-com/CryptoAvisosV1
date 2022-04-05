@@ -206,15 +206,6 @@ contract CryptoAvisosV1 is Ownable {
         emit SwitchChanged(productId, isEnabled);
     }
 
-    function _checkArrayLength(uint[] memory productsId, address[] memory sellers, uint[] memory prices, address[] memory tokens, uint16[] memory stocks) internal pure {
-        // checks if arrays have same length
-        uint length = productsId.length;
-        require(length == sellers.length, "!sellers");
-        require(length == prices.length, "!prices");
-        require(length == tokens.length, "!tokens");
-        require(length == stocks.length, "!stocks");
-    }
-
     function _checkArrayLength(uint[] memory productsId, uint16[] memory stocks) internal pure {
         // checks if arrays have same length
         uint length = productsId.length;
@@ -438,28 +429,22 @@ contract CryptoAvisosV1 is Ownable {
     /// @notice Submit products in batch
     /// @dev Create a new product in loop, revert if already exists.
     /// @param productsId ID of the product in CA DB
-    /// @param sellers seller address of the product
-    /// @param prices price (with corresponding ERC20 decimals)
-    /// @param tokens address of the token
-    /// @param stocks how much units of the product
-    function batchSubmitProduct(uint[] memory productsId, address[] memory sellers, uint[] memory prices, address[] memory tokens, uint16[] memory stocks) external onlyWhitelisted {
-        _checkArrayLength(productsId, sellers, prices, tokens, stocks);
+    /// @param products array of Product struct to create
+    function batchSubmitProduct(uint[] memory productsId, Product[] memory products) external onlyWhitelisted {
+        require(productsId.length == products.length, "!productsId");
         for (uint256 i = 0; i < productsId.length; i++) {
-            _submitProduct(productsId[i], payable(sellers[i]), prices[i], tokens[i], stocks[i]);
+            _submitProduct(productsId[i], payable(products[i].seller), products[i].price, products[i].token, products[i].stock);
         }
     }
 
     /// @notice Used by admin to update values of a product, in batch
     /// @dev `productId` needs to be already in contract
     /// @param productsId ID of the product in CA DB
-    /// @param sellers seller address of the product
-    /// @param prices price (with corresponding ERC20 decimals)
-    /// @param tokens address of the token
-    /// @param stocks how much units of the product
-    function batchUpdateProduct(uint[] memory productsId, address[] memory sellers, uint[] memory prices, address[] memory tokens, uint16[] memory stocks) external onlyProductOwnerBatch(productsId) {
-        _checkArrayLength(productsId, sellers, prices, tokens, stocks);
+    /// @param products array of Product struct to update
+    function batchUpdateProduct(uint[] memory productsId, Product[] memory products) external onlyProductOwnerBatch(productsId) {
+        require(productsId.length == products.length, "!productsId");
         for (uint256 i = 0; i < productsId.length; i++) {
-            _updateProduct(productsId[i], payable(sellers[i]), prices[i], tokens[i], stocks[i]);
+            _updateProduct(productsId[i], payable(products[i].seller), products[i].price, products[i].token, products[i].stock);
         }
     }
 
