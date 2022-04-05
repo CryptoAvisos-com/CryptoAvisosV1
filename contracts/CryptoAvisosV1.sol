@@ -164,22 +164,22 @@ contract CryptoAvisosV1 is Ownable {
         emit FeeSetted(previousFee, newFee);
     }
 
-    function _submitProduct(uint productId, address payable seller, uint price, address token, uint16 stock) internal {
+    function _submitProduct(uint productId, address payable seller, uint price, address token, uint16 stock, bool enabled) internal {
         require(productId != 0, "!productId");
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
         require(stock != 0, "!stock");
         require(productMapping[productId].seller == address(0), "alreadyExist");
         require(owner() == msg.sender || seller == msg.sender, "!whitelisted");
-        productMapping[productId] = Product(price, seller, token, true, stock);
+        productMapping[productId] = Product(price, seller, token, enabled, stock);
         productsIds.push(productId);
         emit ProductSubmitted(productId);
     }
 
-    function _updateProduct(uint productId, address payable seller, uint price, address token, uint16 stock) internal {
+    function _updateProduct(uint productId, address payable seller, uint price, address token, uint16 stock, bool enabled) internal {
         require(price != 0, "!price");
         require(seller != address(0), "!seller");
-        productMapping[productId] = Product(price, seller, token, true, stock);
+        productMapping[productId] = Product(price, seller, token, enabled, stock);
         emit ProductUpdated(productId);
     }
 
@@ -282,7 +282,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param token address of the token
     /// @param stock how much units of the product
     function submitProduct(uint productId, address payable seller, uint price, address token, uint16 stock) external onlyWhitelisted {
-        _submitProduct(productId, seller, price, token, stock);
+        _submitProduct(productId, seller, price, token, stock, true);
     }
 
     /// @notice This function enable or disable a product
@@ -370,7 +370,7 @@ contract CryptoAvisosV1 is Ownable {
     /// @param stock how much units of the product
     function updateProduct(uint productId, address payable seller, uint price, address token, uint16 stock) external onlyProductOwner(productId) {
         //Update a product
-        _updateProduct(productId, seller, price, token, stock);
+        _updateProduct(productId, seller, price, token, stock, true);
     }
 
     /// @notice Refunds pay (sends money, without fee, to the buyer)
@@ -433,7 +433,7 @@ contract CryptoAvisosV1 is Ownable {
     function batchSubmitProduct(uint[] memory productsId, Product[] memory products) external onlyWhitelisted {
         require(productsId.length == products.length, "!productsId");
         for (uint256 i = 0; i < productsId.length; i++) {
-            _submitProduct(productsId[i], payable(products[i].seller), products[i].price, products[i].token, products[i].stock);
+            _submitProduct(productsId[i], payable(products[i].seller), products[i].price, products[i].token, products[i].stock, products[i].enabled);
         }
     }
 
@@ -444,7 +444,7 @@ contract CryptoAvisosV1 is Ownable {
     function batchUpdateProduct(uint[] memory productsId, Product[] memory products) external onlyProductOwnerBatch(productsId) {
         require(productsId.length == products.length, "!productsId");
         for (uint256 i = 0; i < productsId.length; i++) {
-            _updateProduct(productsId[i], payable(products[i].seller), products[i].price, products[i].token, products[i].stock);
+            _updateProduct(productsId[i], payable(products[i].seller), products[i].price, products[i].token, products[i].stock, products[i].enabled);
         }
     }
 

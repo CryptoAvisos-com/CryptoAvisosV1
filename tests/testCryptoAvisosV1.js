@@ -627,9 +627,9 @@ describe("CryptoAvisosV1", function () {
         let productsId = productsForBatch;
         let products = [
             [100, seller.address, this.dai.address, true, 10],
-            [200, seller.address, ethers.constants.AddressZero, true, 20],
+            [200, seller.address, ethers.constants.AddressZero, false, 20],
             [300, seller.address, this.dai.address, true, 30],
-            [400, seller.address, ethers.constants.AddressZero, true, 40],
+            [400, seller.address, ethers.constants.AddressZero, false, 40],
             [500, seller.address, this.dai.address, true, 50],
         ]
 
@@ -653,7 +653,8 @@ describe("CryptoAvisosV1", function () {
             expect(Number(product.price)).equal(Number(products[i][0]));
             expect(product.seller).equal(products[i][1]);
             expect(product.token).equal(products[i][2]);
-            expect(product.stock).equal(products[i][4]);    
+            expect(product.enabled).equal(products[i][3]);
+            expect(product.stock).equal(products[i][4]);
         });
     });
 
@@ -663,9 +664,9 @@ describe("CryptoAvisosV1", function () {
         let productsId = [currentProducts[0], currentProducts[1], currentProducts[2], currentProducts[3], currentProducts[4]];
         let products = [
             [500, otherSeller.address, ethers.constants.AddressZero, true, 60],
-            [600, otherSeller2.address, this.dai.address, true, 80],
+            [600, otherSeller2.address, this.dai.address, false, 80],
             [800, otherSeller.address, ethers.constants.AddressZero, true, 90],
-            [900, otherSeller2.address, this.dai.address, true, 100],
+            [900, otherSeller2.address, this.dai.address, false, 100],
             [1000, otherSeller.address, ethers.constants.AddressZero, true, 110],
         ]
 
@@ -689,6 +690,7 @@ describe("CryptoAvisosV1", function () {
             expect(Number(product.price)).equal(Number(products[i][0]));
             expect(product.seller).equal(products[i][1]);
             expect(product.token).equal(products[i][2]);
+            expect(product.enabled).equal(products[i][3]);
             expect(product.stock).equal(products[i][4]);    
         });
     });
