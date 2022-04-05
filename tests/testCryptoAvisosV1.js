@@ -439,6 +439,38 @@ describe("CryptoAvisosV1", function () {
         expect(Number(ethBalanceContractAfter)).closeTo(Number(ethBalanceContractBefore) - Number(balanceToClaim), 0.01);
     });
 
+    it("Should claim shipping cost in DAI, succesfully...", async function () {
+        let balanceToClaim = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableShippingCost(this.dai.address));
+        
+        //Claim
+        await expect(this.cryptoAvisosV1.connect(deployer).claimShippingCost(this.dai.address, ethers.utils.parseUnits(balanceToClaim + 1))).to.be.revertedWith("!funds");
+
+        let daiBalanceOwnerBefore = ethers.utils.formatUnits(await this.dai.balanceOf(deployer.address));
+        let daiBalanceContractBefore = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+        await this.cryptoAvisosV1.connect(deployer).claimShippingCost(this.dai.address, ethers.utils.parseUnits(balanceToClaim));
+        let daiBalanceOwnerAfter = ethers.utils.formatUnits(await this.dai.balanceOf(deployer.address));
+        let daiBalanceContractAfter = ethers.utils.formatUnits(await this.dai.balanceOf(this.cryptoAvisosV1.address));
+
+        expect(Number(daiBalanceOwnerAfter)).closeTo(Number(daiBalanceOwnerBefore) + Number(balanceToClaim), 0.01);
+        expect(Number(daiBalanceContractAfter)).closeTo(Number(daiBalanceContractBefore) - Number(balanceToClaim), 0.01);
+    });
+
+    it("Should claim shipping cost in ETH, succesfully...", async function () {
+        let balanceToClaim = ethers.utils.formatUnits(await this.cryptoAvisosV1.claimableShippingCost(ethers.constants.AddressZero));
+
+        //Claim
+        await expect(this.cryptoAvisosV1.connect(deployer).claimShippingCost(ethers.constants.AddressZero, ethers.utils.parseUnits(balanceToClaim + 1))).to.be.revertedWith("!funds");
+
+        let ethBalanceOwnerBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(deployer.address));
+        let ethBalanceContractBefore = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
+        await this.cryptoAvisosV1.connect(deployer).claimShippingCost(ethers.constants.AddressZero, ethers.utils.parseUnits(balanceToClaim));
+        let ethBalanceOwnerAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(deployer.address));
+        let ethBalanceContractAfter = ethers.utils.formatUnits(await ethers.provider.getBalance(this.cryptoAvisosV1.address));
+        
+        expect(Number(ethBalanceOwnerAfter)).closeTo(Number(ethBalanceOwnerBefore) + Number(balanceToClaim), 0.01);
+        expect(Number(ethBalanceContractAfter)).closeTo(Number(ethBalanceContractBefore) - Number(balanceToClaim), 0.01);
+    });
+
     it("Should add stock, successfully...", async function () {
         let productToAdd = productArray[0];
         let stockToAdd = 5;
