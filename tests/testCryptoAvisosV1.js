@@ -7,7 +7,7 @@ describe("CryptoAvisosV1", function () {
     let fee = 10;
 
     before(async function () {
-        [deployer, seller, buyer, allowedSigner, otherSeller, otherSeller2] = await ethers.getSigners();
+        [deployer, seller, buyer, allowedSigner, otherSeller, otherSeller2, newAllowedSigner] = await ethers.getSigners();
 
         //Deploy CAV1
         this.CryptoAvisosV1 = await ethers.getContractFactory("CryptoAvisosV1");
@@ -807,6 +807,15 @@ describe("CryptoAvisosV1", function () {
         productsToAssertDisabled.forEach(function (product, i) {
             expect(product.enabled).equal(false);
         });
+    });
+
+    it("Should change allowed signer, successfully...", async function () {
+        let oldAllowedSignerAddress = await this.cryptoAvisosV1.allowedSigner();
+        let newAllowedSignerAddress = newAllowedSigner.address;
+        await this.cryptoAvisosV1.changeAllowedSigner(newAllowedSignerAddress);
+        let allowedSigner = await this.cryptoAvisosV1.allowedSigner();
+        expect(allowedSigner).equal(newAllowedSignerAddress);
+        expect(oldAllowedSignerAddress).not.equal(allowedSigner);
     });
 
 });

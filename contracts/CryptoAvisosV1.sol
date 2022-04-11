@@ -24,7 +24,7 @@ contract CryptoAvisosV1 is Ownable {
     uint public lastFeeToSet;
     uint public nonce;
 
-    address public immutable allowedSigner;
+    address public allowedSigner;
 
     event ProductSubmitted(uint productId);
     event ProductPaid(uint productId, uint ticketId);
@@ -39,11 +39,11 @@ contract CryptoAvisosV1 is Ownable {
     event StockRemoved(uint productId, uint16 stockRemoved);
     event SellerWhitelistAdded(address seller);
     event SellerWhitelistRemoved(address seller);
+    event ChangedAllowedSigner(address newAllowedSigner);
 
     constructor(uint newFee, address _allowedSigner){
         _setFee(newFee);
-        require(_allowedSigner != address(0), "!allowedSigner");
-        allowedSigner = _allowedSigner;
+        _changeAllowedSigner(_allowedSigner);
     }
 
     modifier onlyWhitelisted() {
@@ -272,6 +272,18 @@ contract CryptoAvisosV1 is Ownable {
             IERC20(token).transfer(msg.sender, quantity);
         }
         emit FeesClaimed(msg.sender, token, quantity);
+    }
+
+    function _changeAllowedSigner(address _allowedSigner) internal {
+        require(_allowedSigner != address(0), "!allowedSigner");
+        allowedSigner = _allowedSigner;
+        emit ChangedAllowedSigner(_allowedSigner);
+    }
+
+    /// @notice Used for admin to change allowed signer account
+    /// @param _allowedSigner address of new signer
+    function changeAllowedSigner(address _allowedSigner) external onlyOwner {
+        _changeAllowedSigner(_allowedSigner);
     }
 
     /// @notice Submit a product
